@@ -202,11 +202,12 @@ export function CloudBackup() {
           <li>Añade <b>Dar formato a la fecha</b> sobre <b>Fecha actual</b>: formato <b>Personalizado</b> con <span className="font-mono text-emerald-400">yyyy-MM-dd</span>.</li>
           <li>Añade <b>Obtener contenido de URL</b>: URL <span className="break-all font-mono text-emerald-400">{(cfg.url.trim().replace(/\/+$/, '') || 'TU_URL_SUPABASE') + '/rest/v1/rpc/apex_steps_event'}</span>, Método <b>POST</b>, los mismos 3 encabezados que el atajo de sueño.</li>
           <li>Cuerpo <b>JSON</b>: <span className="font-mono">p_device</span> (texto) = el código de abajo, <span className="font-mono">p_day</span> (texto) = la fecha con formato, <span className="font-mono">p_steps</span> (<b>número</b>) = la suma de pasos.</li>
-          <li>Automatización: en Atajos → <b>Automatización</b> → <b>+</b> → <b>App</b> → elige esta app → <b>Se abre</b> → <b>Ejecutar inmediatamente</b> → tu atajo. Así los pasos se mandan justo al abrirla. Opcional: otra a una hora fija (p. ej. 23:00).</li>
+          <li>Aviso si el iPhone está bloqueado: iOS no deja leer Salud con el móvil bloqueado. Justo después de <b>Calcular estadísticas</b> añade <b>Si</b> → la suma <b>no tiene ningún valor</b> (o es 0) → dentro, <b>Mostrar notificación</b> con el texto «Desbloquea el iPhone para enviar tus pasos» y <b>Detener este atajo</b>; después <b>Fin Si</b>. Así, si el móvil está bloqueado te llega ese aviso en lugar de mandar un 0.</li>
+          <li>Automatización a hora fija: en Atajos → <b>Automatización</b> → <b>+</b> → <b>Hora del día</b> (p. ej. 23:00, a diario) → <b>Ejecutar inmediatamente</b> → tu atajo. Crea otra igual a las 23:20 como segundo intento: si la primera te avisó y ya desbloqueaste, la segunda manda los pasos.</li>
         </ol>
         <div className="mt-2 break-all rounded-lg bg-slate-900 p-2 font-mono text-[11px] text-emerald-400">{cfg.deviceId}</div>
         <button className="btn btn-ghost mt-2 w-full !py-2" onClick={() => void copy(cfg.deviceId, 'id3')}><Copy size={14} /> {copied === 'id3' ? 'Copiado' : 'Copiar código (p_device)'}</button>
-        <p className="mt-2 text-slate-400">Aviso: iOS no deja leer Salud con el iPhone bloqueado, así que una automatización a hora fija puede fallar si el móvil está bloqueado. La de «Se abre la app» es la fiable. Al abrir, la app muestra los pasos del momento en que se ejecutó el atajo; si lo abres otra vez, se actualizan.</p>
+        <p className="mt-2 text-slate-400">Nota: iOS no permite elegir una app web instalada en la pantalla de inicio en la automatización «Se abre la app», por eso se usa la hora del día. Al abrir la app, muestra los pasos del momento en que se ejecutó el atajo; si vuelves a ejecutarlo, se actualizan.</p>
       </details>
 
       <details className="rounded-xl bg-slate-800 p-3 text-xs text-slate-300">
