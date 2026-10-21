@@ -24,7 +24,7 @@ import { MealBreakdown } from './MealBreakdown';
 import { AdaptiveTdeeCard } from './AdaptiveTdeeCard';
 import { ReliabilityCard } from './ReliabilityCard';
 import { RepeatedMealsCard } from './RepeatedMealsCard';
-import { DoubleReadToggle } from './DoubleReadToggle';
+import { AnalysisOptions } from './AnalysisOptions';
 import { Hint } from './Hint';
 import { DayPlanner } from './DayPlanner';
 import { WeeklyCoach } from './WeeklyCoach';
@@ -98,8 +98,7 @@ export function DiaryTab() {
 
   const photo = (
     <div className="space-y-2">
-      <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 400))} rows={2} disabled={busy} aria-label="Describe qué lleva el plato (opcional)" placeholder="Opcional: cuéntale qué lleva (ej. 150 g de pollo a la plancha, arroz con aceite de oliva…) para que sea más preciso" className="w-full resize-none rounded-xl bg-slate-800 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700 placeholder:text-slate-500 focus:ring-accent" />
-      <DoubleReadToggle />
+      <AnalysisOptions note={note} setNote={setNote} busy={busy} />
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <button className="btn btn-green !py-4 text-base" disabled={busy} onClick={() => photoFor(null)}><Camera size={22} /> Fotografiar plato</button>
         <button className="btn btn-ghost !px-4 !py-4" disabled={busy} onClick={() => photoFor(null, true)} aria-label="Subir una foto de la galería"><ImagePlus size={22} /></button>
