@@ -13,6 +13,7 @@ import { isConnected } from '../lib/cloud';
 import { applySleepEvents, pullSleepEvents } from '../lib/sleepCloud';
 import { applyStepsEvents, pullStepsEvents } from '../lib/stepsCloud';
 import { SleepCalc } from './SleepCalc';
+import { MissingStepsNotice } from './MissingStepsNotice';
 
 const clamp = (n: number, a: number, b: number): number => Math.min(b, Math.max(a, n));
 const fmtHM = (h: number): string => {
@@ -111,6 +112,7 @@ export function HabitsGrid() {
 
   return (
     <div className="space-y-3">
+      {shown.includes('pasos') && <MissingStepsNotice />}
       <div className="grid grid-cols-2 items-stretch gap-3">
         {shown.includes('agua') && <Tile {...tileProps('agua')} icon={<Droplet size={13} strokeWidth={1.75} className="text-sky-400" />} title="Agua">
           <div className="text-2xl font-black tabular-nums text-white">{liters}<span className="text-xs font-medium text-slate-400"> / {waterGoal} L</span></div>
