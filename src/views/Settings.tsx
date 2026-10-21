@@ -3,7 +3,7 @@ import { Bell, Database, Search, Download, Dumbbell, ExternalLink, Lightbulb, Pa
 import { useRef, useState } from 'react';
 import { isConnected, lastBackupAt } from '../lib/cloud';
 import { searchSettings } from '../lib/settingsIndex';
-import { pushEnabled } from '../lib/push';
+import { usePushEnabled } from '../lib/usePushEnabled';
 import { geminiLastMinute, geminiUsage, lastGoodModel, testGeminiKey, type KeyCheck } from '../lib/gemini';
 import { exportBackupFile } from '../lib/backup';
 import { exportWorkoutsCsv } from '../lib/exportWorkouts';
@@ -100,7 +100,7 @@ export default function Settings() {
   const cloudDays = lastCloud ? Math.floor((nowTs - lastCloud) / 86_400_000) : null;
   const cloudText = !isConnected() ? 'Sin configurar' : cloudDays === null ? 'Aún sin copia' : cloudDays === 0 ? 'Copia de hoy' : `Copia de hace ${cloudDays} d`;
   const cloudOk = isConnected() && cloudDays !== null && cloudDays <= 3;
-  const pushOk = pushEnabled();
+  const pushOk = usePushEnabled();
   const status: [string, string, boolean, string][] = [
     ['IA', keyOk ? 'Conectada' : 'Falta la clave', keyOk, 'ia'],
     ['Nube', cloudText, cloudOk, 'datos'],

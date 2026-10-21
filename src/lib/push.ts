@@ -54,6 +54,7 @@ export async function enablePush(): Promise<void> {
   } catch {
     /* noop */
   }
+  window.dispatchEvent(new Event('apex-push-change'));
 }
 
 export const disablePush = (): void => {
@@ -62,6 +63,7 @@ export const disablePush = (): void => {
   } catch {
     /* noop */
   }
+  window.dispatchEvent(new Event('apex-push-change'));
 };
 
 // Las operaciones se aplican en orden (cancelar y reprogramar el descanso seguidos no deben cruzarse).
