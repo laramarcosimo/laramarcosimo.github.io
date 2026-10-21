@@ -1,0 +1,11 @@
+node_modules
+dist
+.tools
+.DS_Store
+.claude
+.env
+.env.*
+*.local
+*backup*.json
+*export*.json
+*.log
