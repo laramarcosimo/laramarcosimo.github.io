@@ -1,4 +1,4 @@
-import { Camera, Check, ScanBarcode, Search } from 'lucide-react';
+import { Camera, Check, ImagePlus, ScanBarcode, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { readLabel, readBarcode, readExpiry, readNutritionLabel } from '../lib/gemini';
 import { ProductRater } from './ProductRater';
@@ -37,6 +37,9 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
   const [newName, setNewName] = useState('');
   const labelRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const labelGalRef = useRef<HTMLInputElement>(null);
+  const dateGalRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canLive = !!navigator.mediaDevices && !!makeDetector();
@@ -64,6 +67,7 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
 
   const onPhoto = async (f: File | undefined) => {
     if (fileRef.current) fileRef.current.value = '';
+    if (galleryRef.current) galleryRef.current.value = '';
     if (!f) return;
     setBusy('Leyendo código…');
     setErr('');
@@ -106,6 +110,7 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
   /** Foto de la tabla de información nutricional: sustituye (o crea, si el código no estaba) los valores por 100 g. */
   const onLabelPhoto = async (f: File | undefined) => {
     if (labelRef.current) labelRef.current.value = '';
+    if (labelGalRef.current) labelGalRef.current.value = '';
     if (!f) return;
     setBusy('Leyendo la tabla nutricional…');
     setErr('');
@@ -124,6 +129,7 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
 
   const onDatePhoto = async (f: File | undefined) => {
     if (dateRef.current) dateRef.current.value = '';
+    if (dateGalRef.current) dateGalRef.current.value = '';
     if (!f) return;
     setBusy('Leyendo la fecha…');
     setErr('');
@@ -189,9 +195,11 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
             <div className="grid grid-cols-2 gap-2">
               {canLive && <button className="btn btn-green col-span-2" onClick={() => setLive(true)}><ScanBarcode size={18} strokeWidth={1.75} /> Escanear con la cámara</button>}
               <button className={canLive ? 'btn btn-ghost col-span-2' : 'btn btn-green col-span-2'} onClick={() => fileRef.current?.click()}><Camera size={18} strokeWidth={1.75} /> Hacer foto del código y la fecha</button>
+              <button className="btn btn-ghost col-span-2" onClick={() => galleryRef.current?.click()}><ImagePlus size={18} strokeWidth={1.75} /> Subir foto de la galería</button>
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onPhoto(e.target.files?.[0])} />
+          <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPhoto(e.target.files?.[0])} />
           <div className="flex gap-2">
             <input className="field" inputMode="numeric" placeholder="O escribe los números del código" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} onKeyDown={(e) => e.key === 'Enter' && code.length >= 8 && void search(code)} />
             <button className="btn btn-blue" disabled={code.length < 8 || !!busy} onClick={() => void search(code)} aria-label="Buscar"><Search size={18} /></button>
@@ -204,11 +212,13 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
               <div className="text-sm font-semibold text-white">Lee la tabla nutricional del envase</div>
               <input className="field" placeholder="Nombre del producto (opcional)" value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="Nombre del producto" />
               <button className="btn btn-blue w-full" onClick={() => labelRef.current?.click()}><Camera size={16} strokeWidth={1.75} /> Foto de la tabla nutricional</button>
+              <button className="btn btn-ghost w-full" onClick={() => labelGalRef.current?.click()}><ImagePlus size={16} strokeWidth={1.75} /> Subir foto de la tabla desde la galería</button>
             </div>
           )}
         </div>
       )}
       <input ref={labelRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onLabelPhoto(e.target.files?.[0])} />
+      <input ref={labelGalRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onLabelPhoto(e.target.files?.[0])} />
       {prod && (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -230,6 +240,7 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
               ))}
             </div>
             <button className="btn btn-ghost mt-3 w-full !py-2 text-xs" disabled={!!busy} onClick={() => labelRef.current?.click()}><Camera size={14} strokeWidth={1.75} /> Los valores no coinciden: foto de la tabla nutricional</button>
+            <button className="btn btn-ghost mt-2 w-full !py-2 text-xs" disabled={!!busy} onClick={() => labelGalRef.current?.click()}><ImagePlus size={14} strokeWidth={1.75} /> O sube la foto de la tabla desde la galería</button>
             <p className="mt-1.5 text-[11px] text-slate-500">Los valores de la base de datos los escribe la comunidad y a veces fallan. Puedes corregirlos aquí a mano o leerlos de la foto del envase.</p>
           </div>
           <div>
@@ -242,8 +253,10 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
             <div className="flex gap-2">
               <input type="date" className="field" value={expires} onChange={(e) => setExpires(e.target.value)} />
               <button className="btn btn-ghost shrink-0" disabled={!!busy} onClick={() => dateRef.current?.click()}><Camera size={16} strokeWidth={1.75} /> Leer</button>
+              <button className="btn btn-ghost shrink-0" disabled={!!busy} onClick={() => dateGalRef.current?.click()} aria-label="Leer la fecha de una foto de la galería"><ImagePlus size={16} strokeWidth={1.75} /></button>
             </div>
             <input ref={dateRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onDatePhoto(e.target.files?.[0])} />
+            <input ref={dateGalRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onDatePhoto(e.target.files?.[0])} />
             <Hint className="mt-1 text-[11px] text-slate-500">El código no incluye la fecha: ponla a mano o con foto (fecha real). Si la dejas vacía, se estimará según el producto y saldrá en violeta como aproximada.</Hint>
           </div>
           <ProductRater prod={prod} />

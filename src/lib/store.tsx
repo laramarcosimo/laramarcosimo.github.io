@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AppState } from './types';
 import { normalizePairs } from './workout';
-import { legacyPlaceOf, syncPackUnits } from './pantry';
+import { legacyPlaceOf, rememberPantry, syncPackUnits } from './pantry';
 import { moveStretches, stretchSets } from './stretchFix';
 import { setExtraFoods } from './foodDb';
 import { REMOVED_IDS, BUILTIN_EXERCISES, DB_VERSION, DEFAULT_TEMPLATES, GLOW_TEMPLATE, OLD_DEFAULT_IDS } from './exercises';
@@ -133,7 +133,8 @@ const renameCore = (s: AppState): AppState => {
 /** Aplica y recuerda las unidades por envase de la despensa (rebanadas, packs…). Devuelve el mismo estado si no cambia nada. */
 const syncUnits = (s: AppState): AppState => {
   const r = syncPackUnits(s.pantry, s.packInfo);
-  return r.pantry === s.pantry && r.packInfo === s.packInfo ? s : { ...s, pantry: r.pantry, packInfo: r.packInfo };
+  const history = rememberPantry(s.pantryHistory, r.pantry);
+  return r.pantry === s.pantry && r.packInfo === s.packInfo && history === s.pantryHistory ? s : { ...s, pantry: r.pantry, packInfo: r.packInfo, pantryHistory: history };
 };
 
 const load = (): AppState => syncUnits(renameCore(loadRaw()));

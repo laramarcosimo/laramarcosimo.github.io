@@ -6,7 +6,7 @@ import { ALL_CATEGORIES, categoryOf } from '../lib/categories';
 import { readPackUnits } from '../lib/gemini';
 import { compressToBase64 } from '../lib/image';
 import { findProductImage, forgetCachedImage, productKey } from '../lib/openfood';
-import { addToPantry, askUnits, configureUnits, PLACES, placeOf, setPackQty, spendUnits, suggestUnits, unitsSummary, type Place } from '../lib/pantry';
+import { addToPantry, askUnits, configureUnits, goneProducts, PLACES, placeOf, setPackQty, spendUnits, suggestUnits, unitsSummary, type Place } from '../lib/pantry';
 import { SUPERMARKETS } from '../lib/stores';
 import { useStore } from '../lib/store';
 import type { PantryItem } from '../lib/types';
@@ -171,6 +171,8 @@ export function PantryInventory({ onBarcode, soon, setSoon }: { onBarcode: () =>
   const stores = [...new Set([state.defaultSupermarket, ...state.supermarkets, ...SUPERMARKETS.map((x) => x.name)])];
 
   const asks = askUnits(state.pantry).slice(0, 3);
+  // Productos que ya tuviste y se han agotado: salen al buscarlos para volver a añadirlos de un toque.
+  const gone = goneProducts(state.pantryHistory, state.pantry, q);
 
   return (
     <div className="space-y-3">
@@ -234,7 +236,19 @@ export function PantryInventory({ onBarcode, soon, setSoon }: { onBarcode: () =>
 
       <div className="space-y-2">
         {state.pantry.length === 0 && <p className="text-sm text-slate-500">Tu despensa está vacía.</p>}
-        {state.pantry.length > 0 && visible.length === 0 && <p className="text-sm text-slate-500">Nada coincide. {q.trim() && 'Toca + para añadirlo.'}</p>}
+        {state.pantry.length > 0 && visible.length === 0 && gone.length === 0 && <p className="text-sm text-slate-500">Nada coincide. {q.trim() && 'Toca + para añadirlo.'}</p>}
+        {gone.length > 0 && (
+          <div className="space-y-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <div className="text-xs font-bold uppercase text-amber-400">Agotado · ¿se te olvidó reponerlo?</div>
+            {gone.map((m) => (
+              <div key={m.name} className="flex items-center gap-3">
+                <div className="shrink-0 rounded-xl"><ProductThumb name={m.name} store={m.store} size={44} /></div>
+                <div className="min-w-0 flex-1 break-words text-sm font-semibold text-white">{m.name}</div>
+                <button className="btn btn-blue !px-3 !py-2 text-xs" onClick={() => { update((s) => ({ ...s, pantry: addToPantry(s.pantry, [{ name: m.name, store: m.store ?? s.defaultSupermarket, place: m.place }]) })); }} aria-label={`Volver a añadir ${m.name}`}><Plus size={14} /> Añadir</button>
+              </div>
+            ))}
+          </div>
+        )}
         {visible.map((p) => {
           const Pl = PLACE_ICON[placeOf(p)];
           return (

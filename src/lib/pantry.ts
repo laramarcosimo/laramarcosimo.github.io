@@ -1,4 +1,4 @@
-import type { PackInfo, PantryItem } from './types';
+import type { PackInfo, PantryItem, PantryMemo } from './types';
 import { productKey } from './openfood';
 import { estimateExpiry } from './shelfLife';
 import { looseMatch, norm, uid } from './utils';
@@ -200,4 +200,34 @@ export const addToPantry = (pantry: PantryItem[], entries: (string | PantryEntry
     items = hit ? items.map((p) => (p.id === hit.id ? { ...p, qty: p.qty + q, units: p.unitsPerPack ? (unitsLeft(p) ?? 0) + q * p.unitsPerPack : p.units, store: p.store ?? e.store, expires: e.expires ?? p.expires, expiresApprox: e.expires ? false : p.expiresApprox, unitGrams: e.unitGrams ?? p.unitGrams, portionG: e.portionG ?? p.portionG } : p)) : [...items, { id: uid(), name, qty: q, place: e.place, store: e.store || undefined, expires: e.expires || estimateExpiry(name), expiresApprox: e.expires ? false : estimateExpiry(name) ? true : undefined, unitGrams: e.unitGrams, portionG: e.portionG, ...(e.unitsPerPack ? { unitLabel: e.unitLabel, unitsPerPack: e.unitsPerPack, innerPack: e.innerPack, units: e.unitsPerPack * q } : newUnitFields(name, q)) }];
   }
   return items;
+};
+
+const MEMO_MAX = 400;
+
+/**
+ * Recuerda cada producto que pasa por la despensa. Así, cuando se agota y desaparece de la lista, sigue apareciendo al buscarlo para añadirlo de nuevo.
+ * Devuelve la misma lista (misma referencia) si no hay nada nuevo que recordar.
+ */
+export const rememberPantry = (history: PantryMemo[] | undefined, pantry: PantryItem[]): PantryMemo[] | undefined => {
+  let next = history;
+  for (const p of pantry) {
+    const key = productKey(p.name);
+    if (!key) continue;
+    const i = (next ?? []).findIndex((m) => productKey(m.name) === key);
+    const memo: PantryMemo = { name: p.name, ...(p.store ? { store: p.store } : {}), ...(p.place ? { place: p.place } : {}), ...(p.category ? { category: p.category } : {}) };
+    if (i < 0) next = [...(next ?? []), memo].slice(-MEMO_MAX);
+    else {
+      const cur = (next as PantryMemo[])[i];
+      if (cur.name !== memo.name || cur.store !== memo.store || cur.place !== memo.place || cur.category !== memo.category) next = (next as PantryMemo[]).map((m, j) => (j === i ? memo : m));
+    }
+  }
+  return next;
+};
+
+/** Productos recordados que coinciden con la búsqueda y que ahora mismo NO están en la despensa (agotados o gastados). */
+export const goneProducts = (history: PantryMemo[] | undefined, pantry: PantryItem[], query: string, max = 6): PantryMemo[] => {
+  const q = norm(query);
+  if (!q) return [];
+  const here = new Set(pantry.map((p) => productKey(p.name)));
+  return (history ?? []).filter((m) => norm(m.name).includes(q) && !here.has(productKey(m.name))).slice(-max).reverse();
 };

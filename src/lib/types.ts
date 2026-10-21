@@ -320,6 +320,14 @@ export interface PantryItem {
   unitsOff?: boolean;
 }
 
+/** Producto que ha pasado por la despensa: se recuerda para poder volver a añadirlo si se agota y se te olvida reponerlo. */
+export interface PantryMemo {
+  name: string;
+  store?: string;
+  place?: 'nevera' | 'despensa' | 'congelador';
+  category?: string;
+}
+
 /** Unidades sueltas de un producto que la app recuerda para cuando vuelva a aparecer. */
 export interface PackInfo {
   unitLabel: string;
@@ -502,6 +510,8 @@ export interface AppState {
   productImages: Record<string, string>;
   /** Unidades por envase aprendidas por producto (clave = producto normalizado): rebanadas, tortitas, packs… */
   packInfo?: Record<string, PackInfo>;
+  /** Productos que han estado en la despensa (incluidos los ya agotados), para buscarlos y volver a añadirlos. */
+  pantryHistory?: PantryMemo[];
   /** Correcciones aprendidas de los gramos que estima la IA, por alimento. */
   calib?: Calibration;
   homeGear: HomeGear[];
