@@ -1,5 +1,5 @@
 import { Blocks } from '../components/Blocks';
-import { AlertCircle, CalendarDays, Camera, Refrigerator, ScanBarcode, ShoppingCart, type LucideIcon, ChefHat, Clock, Utensils } from 'lucide-react';
+import { AlertCircle, CalendarDays, Camera, Image as ImageIcon, Refrigerator, ScanBarcode, ShoppingCart, type LucideIcon, ChefHat, Clock, Utensils } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefaultStore } from '../components/DefaultStore';
 import { BarcodeScanner } from '../components/BarcodeScanner';
@@ -55,6 +55,7 @@ const GROUPS: Record<Sub, string[]> = {
 export default function Pantry() {
   const { state, update } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState('');
   const [sub, setSub] = useState<Sub>(() => {
     try {
@@ -84,6 +85,7 @@ export default function Pantry() {
 
   const onFile = async (f: File | undefined) => {
     if (fileRef.current) fileRef.current.value = '';
+    if (galleryRef.current) galleryRef.current.value = '';
     if (!f) return;
     setBusy('Escaneando despensa…');
     setErr('');
@@ -158,9 +160,11 @@ export default function Pantry() {
           <button className="btn btn-green w-full !py-4" disabled={!!busy} onClick={() => fileRef.current?.click()}>
             <Camera size={20} /> Escanear nevera / armario
           </button>
+          <button className="btn btn-ghost w-full" disabled={!!busy} onClick={() => galleryRef.current?.click()}><ImageIcon size={18} strokeWidth={1.75} /> Subir foto de la galería</button>
           <button className="btn btn-ghost w-full" onClick={() => setBarcode(true)}><ScanBarcode size={18} strokeWidth={1.75} /> Escanear código de barras</button>
           {barcode && <BarcodeScanner onClose={() => setBarcode(false)} />}
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
+          <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
     
           {scanned.length > 0 && (
             <div className="card">

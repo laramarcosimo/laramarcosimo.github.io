@@ -111,8 +111,12 @@ export const spendUnits = (pantry: PantryItem[], id: string, n = 1): PantryItem[
 export const configureUnits = (p: PantryItem, label: string, unitsPerPack: number, innerPack?: number): PantryItem => {
   const per = Math.round(unitsPerPack);
   if (!(per > 0)) {
-    const { unitLabel: _l, unitsPerPack: _u, innerPack: _i, units: _n, ...rest } = p;
-    return { ...rest, unitsOff: true };
+    const rest: PantryItem = { ...p, unitsOff: true };
+    delete rest.unitLabel;
+    delete rest.unitsPerPack;
+    delete rest.innerPack;
+    delete rest.units;
+    return rest;
   }
   const inner = innerPack && innerPack > 0 && innerPack < per ? Math.round(innerPack) : undefined;
   const left = p.unitsPerPack && p.units !== undefined ? Math.min(p.units, p.qty * per) : p.qty * per;

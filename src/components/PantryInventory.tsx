@@ -1,4 +1,4 @@
-import { Camera, Minus, MoreHorizontal, Plus, Refrigerator, Search, Snowflake, Trash2, Warehouse } from 'lucide-react';
+import { Camera, Image as ImageIcon, Minus, MoreHorizontal, Plus, Refrigerator, Search, Snowflake, Trash2, Warehouse } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { ProductThumb } from './ProductThumb';
 import { Modal, NumInput } from './ui';
@@ -52,11 +52,13 @@ function SwipeRow({ onDelete, children }: { onDelete: () => void; children: Reac
 function UnitsEditor({ item, onChange, onSpend }: { item: PantryItem; onChange: (p: PantryItem) => void; onSpend: (n: number) => void }) {
   const { state } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   // La foto del envase solo se usa para leer las unidades y no se guarda.
   const readPack = async (f: File | undefined) => {
     if (fileRef.current) fileRef.current.value = '';
+    if (galleryRef.current) galleryRef.current.value = '';
     if (!f) return;
     setBusy(true);
     setErr('');
@@ -72,7 +74,9 @@ function UnitsEditor({ item, onChange, onSpend }: { item: PantryItem; onChange: 
   const photoBtn = state.settings.geminiKey ? (
     <>
       <button className="btn btn-ghost w-full text-sm" disabled={busy} onClick={() => fileRef.current?.click()}><Camera size={16} /> {busy ? 'Leyendo el envase…' : 'Leer unidades del envase con foto'}</button>
+      <button className="btn btn-ghost w-full text-sm" disabled={busy} onClick={() => galleryRef.current?.click()}><ImageIcon size={16} /> Subir foto del envase de la galería</button>
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void readPack(e.target.files?.[0])} />
+      <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={(e) => void readPack(e.target.files?.[0])} />
       {err && <p className="text-xs text-amber-500">{err}</p>}
     </>
   ) : null;

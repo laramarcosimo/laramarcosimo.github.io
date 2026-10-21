@@ -1,4 +1,5 @@
 import { Scale } from 'lucide-react';
+import { useState } from 'react';
 import { adaptiveTdee, trainingCheck } from '../lib/adaptiveTdee';
 import { bmr, typicalSessionKcal } from '../lib/metabolic';
 import { useStore } from '../lib/store';
@@ -9,7 +10,7 @@ const DAY = 86_400_000;
 export function AdaptiveTdeeCard() {
   const { state, update } = useStore();
   const est = adaptiveTdee(state);
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
   const sessions = state.workouts.filter((w) => now - Date.parse(w.startTime) <= 28 * DAY).length;
   const trainDaily = (sessions * typicalSessionKcal(state)) / 28;
   const base = bmr(state.profile);

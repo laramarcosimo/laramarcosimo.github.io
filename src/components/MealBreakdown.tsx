@@ -2,6 +2,7 @@ import { AlertTriangle, BookmarkCheck, X } from 'lucide-react';
 import { hasRawVariant } from '../lib/foodDb';
 import { DEFAULT_PUFF_G, oilGrams, setOil, SPOON_G, sourceCount, toggleRaw, totalsOf, withGrams } from '../lib/mealCalc';
 import { useStore } from '../lib/store';
+import { NumInput } from './ui';
 import type { MealAnalysis, MealPart } from '../lib/types';
 
 const fmt = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -47,15 +48,11 @@ export function MealBreakdown({ result, onChange }: { result: MealAnalysis; onCh
           <div key={`${p.nombre}-${i}`} className="space-y-0.5">
             <div className="flex items-center gap-2 text-sm text-slate-200">
               <span className="min-w-0 flex-1 truncate">{p.nombre}{!p.tabla && <span className="ml-1 text-[10px] text-slate-500" title="Estimación de la IA, no está en la tabla de la app">~</span>}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                min={0}
-                aria-label={`Gramos de ${p.nombre}`}
+              <NumInput
+                label={`Gramos de ${p.nombre}`}
                 value={p.gramos}
-                onChange={(e) => apply(parts.map((x, j) => (j === i ? withGrams(x, Number(e.target.value) || 0) : x)))}
-                className="w-16 rounded bg-slate-800 px-2 py-1 text-right text-sm text-white outline-none ring-1 ring-slate-700 focus:ring-accent"
+                onChange={(n) => apply(parts.map((x, j) => (j === i ? withGrams(x, n) : x)))}
+                className="w-20 rounded bg-slate-800 px-2 py-1 text-right text-white outline-none ring-1 ring-slate-700 focus:ring-accent"
               />
               <span className="text-xs text-slate-500">g</span>
               <span className="w-12 text-right text-xs tabular-nums text-slate-300">{p.calorias}</span>
@@ -82,15 +79,11 @@ export function MealBreakdown({ result, onChange }: { result: MealAnalysis; onCh
         </div>
         <label className="flex items-center gap-2 text-[11px] text-slate-400">
           1 chuf de tu dispensador =
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.1"
-            min={0.1}
-            aria-label="Gramos de aceite por chuf"
+          <NumInput
+            label="Gramos de aceite por chuf"
             value={puff}
-            onChange={(e) => { const v = Number(e.target.value.replace(',', '.')); if (v > 0 && v < 10) update((s) => ({ ...s, settings: { ...s.settings, oilPuffG: v } })); }}
-            className="w-14 rounded bg-slate-800 px-2 py-0.5 text-right text-xs text-white outline-none ring-1 ring-slate-700 focus:ring-accent"
+            onChange={(v) => { if (v > 0 && v < 10) update((s) => ({ ...s, settings: { ...s.settings, oilPuffG: v } })); }}
+            className="w-16 rounded bg-slate-800 px-2 py-1 text-right text-white outline-none ring-1 ring-slate-700 focus:ring-accent"
           />
           g <span className="text-slate-600">(pesa 10 chufs y divide entre 10)</span>
         </label>

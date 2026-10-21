@@ -89,6 +89,12 @@ body {
   user-select: none;
 }
 input, textarea, select { -webkit-user-select: text; user-select: text; font-size: 1rem; }
+/* iPhone: con letra menor de 16 px Safari hace zoom al abrir el teclado y la pantalla se descuadra. Gana a text-sm / text-xs en cualquier campo. */
+@media (max-width: 1024px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  textarea,
+  select { font-size: 16px !important; }
+}
 .pt-safe { padding-top: env(safe-area-inset-top); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 .scroll-area { padding-top: calc(env(safe-area-inset-top) + 12px); padding-bottom: calc(env(safe-area-inset-bottom) + 96px); }
