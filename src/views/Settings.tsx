@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { isConnected, lastBackupAt } from '../lib/cloud';
 import { searchSettings } from '../lib/settingsIndex';
 import { usePushEnabled } from '../lib/usePushEnabled';
-import { geminiLastMinute, geminiUsage, lastGoodModel, testGeminiKey, type KeyCheck } from '../lib/gemini';
+import { geminiLastMinute, geminiUsage, lastCallInfo, lastGoodModel, testGeminiKey, type KeyCheck } from '../lib/gemini';
 import { exportBackupFile } from '../lib/backup';
 import { exportWorkoutsCsv } from '../lib/exportWorkouts';
 import { CloudBackup } from '../components/CloudBackup';
@@ -453,14 +453,15 @@ export default function Settings() {
                   <div className="mb-1 font-semibold text-white">Uso de hoy (aproximado)</div>
                   Peticiones enviadas: <b className="text-white">{u.sent}</b> · correctas: <b className="text-white">{u.ok}</b> · respuestas reutilizadas sin gastar cupo: <b className="text-white">{u.saved}</b>
                   <div className={geminiLastMinute() >= 8 ? 'mt-1 font-semibold text-amber-500' : 'mt-1'}>Último minuto: <b className="text-white">{geminiLastMinute()}</b>{geminiLastMinute() >= 8 ? ' · cerca del límite por minuto del plan gratuito: espera un poco' : ''}</div>
+                  {(() => { const l = lastCallInfo(); return l ? <div className="mt-1">Última respuesta: <b className="text-white">{l.model}</b> en <b className="text-white">{(l.ms / 1000).toFixed(1)} s</b>{l.tried > 0 ? ` · tras fallar ${l.tried} modelo${l.tried > 1 ? 's' : ''} (cuota o saturación)` : ''}</div> : null; })()}
                   <Hint className="mt-1 text-slate-500">Contador local de este dispositivo; tu cupo real lo ves en aistudio.google.com. Se reinicia sobre las 9:00 (hora de España).</Hint>
                 </div>
               );
             })()}
             <div className="rounded-xl bg-slate-800 p-3">
               <label className="label">Margen para cancelar antes de enviar</label>
-              <select className="field" aria-label="Margen para cancelar antes de enviar" value={st.aiGraceSec ?? 2} onChange={(e) => setS({ aiGraceSec: num(e.target.value) })}>
-                {[0, 2, 3, 5].map((n) => <option key={n} value={n}>{n === 0 ? 'Enviar al instante' : `${n} segundos`}</option>)}
+              <select className="field" aria-label="Margen para cancelar antes de enviar" value={st.aiGraceSec ?? 1} onChange={(e) => setS({ aiGraceSec: num(e.target.value) })}>
+                {[0, 1, 2, 3, 5].map((n) => <option key={n} value={n}>{n === 0 ? 'Enviar al instante' : `${n} segundos`}</option>)}
               </select>
               <p className="mt-1 text-[11px] text-slate-400">Cada consulta a la IA espera esos segundos antes de enviarse. Si pulsas «Cancelar» en ese margen, no se gasta nada de tu cupo; después, cancelar corta la espera pero puede que ya se haya gastado.</p>
             </div>

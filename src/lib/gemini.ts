@@ -54,6 +54,16 @@ export type Tier = 'simple' | 'complex';
 /** Último modelo que funcionó por tipo de consulta (sencilla / compleja). */
 export const lastGoodModel = (t: Tier): string => lsGet(`${GOOD_KEY}-${t}`) ?? '';
 
+const LAST_KEY = 'apex-gemini-last';
+/** Última consulta a la IA: modelo que respondió, segundos que tardó y cuántos modelos fallaron antes. */
+export const lastCallInfo = (): { model: string; ms: number; tried: number } | null => {
+  try {
+    return JSON.parse(lsGet(LAST_KEY) ?? 'null') as { model: string; ms: number; tried: number } | null;
+  } catch {
+    return null;
+  }
+};
+
 const versionOf = (name: string): number => {
   const m = name.match(/gemini-(\d+)(?:\.(\d+))?/);
   return m ? Number(m[1]) + Number(m[2] ?? 0) / 100 : 0;
@@ -254,7 +264,7 @@ async function callGemini(settings: Settings, parts: Part[], cache = true, tier:
   }
   const ctl = new AbortController();
   controllers.add(ctl);
-  const grace = Math.max(0, Math.min(10, settings.aiGraceSec ?? 2)) * 1000;
+  const grace = Math.max(0, Math.min(10, settings.aiGraceSec ?? 1)) * 1000;
   if (grace > 0) graceUntil.set(ctl, Date.now() + grace);
   aiNotify();
   try {
@@ -283,12 +293,20 @@ async function callGemini(settings: Settings, parts: Part[], cache = true, tier:
 
 async function callGeminiNet(settings: Settings, parts: Part[], key: string, tier: Tier, opts?: CallOpts): Promise<unknown> {
   const chosen = settings.geminiModel.trim();
+  const t0 = Date.now();
+  const note = (model: string, tried: number): void => lsSet(LAST_KEY, JSON.stringify({ model, ms: Date.now() - t0, tried }));
   // Modelo fijo elegido por el usuario: sin automatismos.
   if (chosen && chosen !== 'auto') {
     try {
-      return await callOne(chosen, key, parts, opts);
+      const r = await callOne(chosen, key, parts, opts);
+      note(chosen, 0);
+      return r;
     } catch (e) {
-      if (e instanceof ModelError && e.invalid) return callOne(chosen, key, parts, opts); // una sola repetición
+      if (e instanceof ModelError && e.invalid) {
+        const r = await callOne(chosen, key, parts, opts); // una sola repetición
+        note(chosen, 1);
+        return r;
+      }
       throw e;
     }
   }
@@ -301,13 +319,16 @@ async function callGeminiNet(settings: Settings, parts: Part[], key: string, tie
   const good = lsGet(`${GOOD_KEY}-${tier}`);
   const order = good && candidates.includes(good) ? [good, ...candidates.filter((m) => m !== good)] : candidates;
   let last: Error = new Error('No hay modelos de Gemini disponibles.');
+  let tried = 0;
   for (const m of order) {
     try {
       const r = await callOne(m, key, parts, opts);
       lsSet(`${GOOD_KEY}-${tier}`, m);
+      note(m, tried);
       return r;
     } catch (e) {
       last = e instanceof Error ? e : new Error(String(e));
+      tried++;
       if (!(e instanceof ModelError) || !e.retry) throw last;
     }
   }
@@ -728,8 +749,8 @@ ${context}
 Si nota dolor o molestia (sobre todo en la rodilla), prioriza la seguridad: reducir carga o rango, parar el ejercicio y, si persiste, consultar con un profesional sanitario. Si pide alternativa por máquina ocupada, da UNA opción equivalente que respete sus reglas de rodilla. Si pregunta por el peso, sugiérelo a partir de su última serie y RPE, sin inventar datos.
 Responde SOLO con JSON estricto: {"respuesta": string}`;
   const hist = history.slice(-8).map((t) => ({ role: t.role === 'user' ? ('user' as const) : ('model' as const), parts: [{ text: t.role === 'user' ? t.text : JSON.stringify({ respuesta: t.text }) }] }));
-  const words = question.trim().split(/\s+/).filter(Boolean).length;
-  const r = (await callGemini(settings, [{ text: question }], false, words <= 12 ? 'simple' : 'complex', { system, history: hist })) as Record<string, unknown>;
+  // Chat a pie de pista: siempre el modelo ligero (más rápido) y sin margen de espera, porque estás entrenando.
+  const r = (await callGemini({ ...settings, aiGraceSec: 0 }, [{ text: question }], false, 'simple', { system, history: hist })) as Record<string, unknown>;
   return String(r.respuesta ?? '').trim() || 'No he podido responder. Inténtalo de nuevo.';
 }
 

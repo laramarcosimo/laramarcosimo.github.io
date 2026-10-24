@@ -1,5 +1,5 @@
 import { Check, Loader2, RotateCcw, Search, Send, Sparkles, X } from 'lucide-react';
-import { useKeyboardPin } from '../lib/viewport';
+import { useKeyboardPin, useVisibleArea } from '../lib/viewport';
 import { useScrollLock } from '../lib/scrollLock';
 import { useEffect, useRef, useState } from 'react';
 import { liveCoachContext } from '../lib/coachChat';
@@ -32,6 +32,7 @@ export function LiveCoachSheet({ workout, initialQuestion, onClose }: { workout?
 
   useScrollLock();
   const { typing, handlers, justFocused } = useKeyboardPin();
+  const area = useVisibleArea(typing); // zona real por encima del teclado: la hoja se ajusta a ella aunque iOS suba la página
   useEffect(() => {
     document.body.classList.add('chat-open');
     return () => document.body.classList.remove('chat-open');
@@ -144,9 +145,9 @@ export function LiveCoachSheet({ workout, initialQuestion, onClose }: { workout?
   }, []);
 
   return (
-    <div className={cx('fixed inset-0 z-[70] flex justify-center', typing ? 'items-start' : 'items-end')} onClick={() => { if (!justFocused()) onClose(); }} {...handlers}>
+    <div className={cx('fixed inset-0 z-[70] flex justify-center', typing ? 'items-start' : 'items-end')} style={typing && area ? { top: area.top, height: area.height, bottom: 'auto' } : undefined} onClick={() => { if (!justFocused()) onClose(); }} {...handlers}>
       <div className="modal-backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className={cx('relative flex w-full max-w-xl flex-col border-slate-700 bg-slate-900', typing ? 'h-[47%] rounded-b-3xl border-b' : 'h-[78%] rounded-t-3xl border-t')} style={typing ? { marginTop: 'env(safe-area-inset-top)' } : { paddingBottom: 'env(safe-area-inset-bottom)' }} onClick={(e) => e.stopPropagation()}>
+      <div className={cx('relative flex w-full max-w-xl flex-col border-slate-700 bg-slate-900', typing ? cx('rounded-b-3xl border-b', area ? 'h-[calc(100%-env(safe-area-inset-top))]' : 'h-[47%]') : 'h-[78%] rounded-t-3xl border-t')} style={typing ? { marginTop: 'env(safe-area-inset-top)' } : { paddingBottom: 'env(safe-area-inset-bottom)' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 pb-2 pt-4">
           <Sparkles size={18} className="text-accent" />
           <h3 className="flex-1 text-lg font-bold text-white">Coach en vivo</h3>

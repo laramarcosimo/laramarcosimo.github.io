@@ -11,6 +11,7 @@ import { ProgressCard } from '../components/ProgressCard';
 import { Reminders } from '../components/Reminders';
 import { WeeklySummary } from '../components/WeeklySummary';
 import { NutritionCalendar } from '../components/NutritionCalendar';
+import { HabitsCalendar } from '../components/HabitsCalendar';
 import { Title } from '../components/ui';
 import { carryOver } from '../lib/balance';
 import { dueReminders } from '../lib/reminders';
@@ -109,7 +110,7 @@ export default function Today({ onStart }: { onStart: (templateId?: string) => v
       </div>
 
       <div className={cx(sub !== 'semana' && 'hidden')}>
-        <Blocks page="hoy-semana" items={{ semana: <WeeklySummary />, calendario: <NutritionCalendar /> }} />
+        <Blocks page="hoy-semana" items={{ semana: <WeeklySummary />, calendario: <NutritionCalendar />, habitosCal: <HabitsCalendar /> }} />
       </div>
     </div>
   );
