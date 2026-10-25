@@ -131,7 +131,7 @@ type Sec = { kind: PhotoKind; a: { id: PhotoView; label: string; long: string };
 const cap = (t: string): string => `${t[0].toUpperCase()}${t.slice(1)}`;
 
 /**
- * PDF del proceso: portada; una hoja por mes con el cuerpo (frente, lado y espalda) y la cara (frente y perfil) de ese mes;
+ * PDF del proceso: portada; una hoja por mes con el cuerpo (frente, lado y espalda) y la cara (frente, perfil y cuello) de ese mes;
  * y la vista del año, con una hoja por ángulo (todas las de frente juntas, todas las de lado…) y el mes escrito debajo.
  */
 export async function monthlyPhotosPdf(photos: PhotoRec[], measurements: Measurement[], goal?: GoalSummary, onFile?: (f: File) => void | Promise<void>): Promise<boolean> {
@@ -151,7 +151,7 @@ export async function monthlyPhotosPdf(photos: PhotoRec[], measurements: Measure
   const INK: RGB = [15, 23, 42];
   const GRAYC: RGB = [100, 116, 139];
   const mix = (p: RGB, q: RGB, t: number): RGB => [Math.round(p[0] + (q[0] - p[0]) * t), Math.round(p[1] + (q[1] - p[1]) * t), Math.round(p[2] + (q[2] - p[2]) * t)];
-  const ACOL: Record<string, RGB> = { 'cuerpo-frente': [37, 99, 235], 'cuerpo-lado': [124, 58, 237], 'cuerpo-espalda': [14, 165, 233], 'cara-frente': [225, 29, 72], 'cara-perfil': [245, 158, 11] };
+  const ACOL: Record<string, RGB> = { 'cuerpo-frente': [37, 99, 235], 'cuerpo-lado': [124, 58, 237], 'cuerpo-espalda': [14, 165, 233], 'cara-frente': [225, 29, 72], 'cara-perfil': [245, 158, 11], 'cara-cuello': [20, 184, 166] };
   const colOf = (kind: PhotoKind, v: PhotoView): RGB => ACOL[`${kind}-${v}`] ?? C1;
   const band = (h: number): void => {
     for (let i = 0; i < h; i += 1) {
@@ -233,7 +233,7 @@ export async function monthlyPhotosPdf(photos: PhotoRec[], measurements: Measure
   });
   d.setFontSize(10);
   d.setTextColor(...INK);
-  d.text(['Una hoja por mes: cuerpo (frente, lado y espalda) y cara (frente y perfil).', 'Después, la vista del año: una hoja por ángulo, mes a mes, y el resumen de tu evolución.'], 14, 109 + sections.length * 11 + 14);
+  d.text(['Una hoja por mes: cuerpo (frente, lado y espalda) y cara (frente, perfil y cuello).', 'Después, la vista del año: una hoja por ángulo, mes a mes, y el resumen de tu evolución.'], 14, 109 + sections.length * 11 + 14);
   if (goal) drawGoalBox(d, 14, 109 + sections.length * 11 + 30, 182, goal);
 
   // ---------- Fotos con marco ----------

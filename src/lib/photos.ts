@@ -3,12 +3,12 @@
  * Viven aparte de los datos de la app: no entran en la copia de seguridad ni se sustituyen al restaurar una copia.
  */
 export type PhotoKind = 'cuerpo' | 'cara';
-/** Ángulo de la foto: cuerpo de frente / de lado / de espaldas; cara de frente / de perfil. */
-export type PhotoView = 'frente' | 'lado' | 'espalda' | 'perfil';
+/** Ángulo de la foto: cuerpo de frente / de lado / de espaldas; yoga facial: cara de frente, de perfil y cuello. */
+export type PhotoView = 'frente' | 'lado' | 'espalda' | 'perfil' | 'cuello';
 
 export const ANGLES: Record<PhotoKind, { id: PhotoView; label: string; long: string }[]> = {
   cuerpo: [{ id: 'frente', label: 'Frente', long: 'cuerpo de frente' }, { id: 'lado', label: 'Lado', long: 'cuerpo de lado' }, { id: 'espalda', label: 'Espalda', long: 'cuerpo de espaldas' }],
-  cara: [{ id: 'frente', label: 'Frente', long: 'cara de frente' }, { id: 'perfil', label: 'Perfil', long: 'cara de perfil' }],
+  cara: [{ id: 'frente', label: 'Frente', long: 'cara de frente' }, { id: 'perfil', label: 'Perfil', long: 'cara de perfil' }, { id: 'cuello', label: 'Cuello', long: 'cuello' }],
 };
 /** Las fotos anteriores a los ángulos cuentan como «de frente». */
 export const viewOf = (p: { view?: PhotoView }): PhotoView => p.view ?? 'frente';
@@ -16,7 +16,7 @@ export const viewOf = (p: { view?: PhotoView }): PhotoView => p.view ?? 'frente'
 export const kindWire = (p: { kind: PhotoKind; view?: PhotoView }): string => (p.view ? `${p.kind}:${p.view}` : p.kind);
 export const parseKindWire = (s: string): { kind: PhotoKind; view?: PhotoView } => {
   const [k, v] = s.split(':');
-  return { kind: k === 'cara' ? 'cara' : 'cuerpo', view: v === 'frente' || v === 'lado' || v === 'espalda' || v === 'perfil' ? v : undefined };
+  return { kind: k === 'cara' ? 'cara' : 'cuerpo', view: v === 'frente' || v === 'lado' || v === 'espalda' || v === 'perfil' || v === 'cuello' ? v : undefined };
 };
 
 export interface PhotoRec {

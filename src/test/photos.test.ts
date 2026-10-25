@@ -110,6 +110,8 @@ describe('ángulos de las fotos', () => {
     expect(kindWire({ kind: 'cara' })).toBe('cara');
     expect(parseKindWire('cuerpo:espalda')).toEqual({ kind: 'cuerpo', view: 'espalda' });
     expect(parseKindWire('cara')).toEqual({ kind: 'cara', view: undefined });
+    expect(parseKindWire('cara:cuello')).toEqual({ kind: 'cara', view: 'cuello' });
+    expect(kindWire({ kind: 'cara', view: 'cuello' })).toBe('cara:cuello');
   });
 });
 
