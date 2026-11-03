@@ -15,6 +15,7 @@ import { ImportReview } from './components/ShoppingImport';
 import { parseList, type ParsedItem } from './lib/shoppingParse';
 import { LayoutEditProvider, useLayoutEdit } from './lib/layoutEdit';
 import { useOnline } from './lib/online';
+import { useNavPin } from './lib/useNavPin';
 import { useUpdateAvailable } from './lib/update';
 import { useStore } from './lib/store';
 import { cx, dayKey, round } from './lib/utils';
@@ -203,6 +204,7 @@ function AppShell() {
   }, [state.settings.hideHints, state.settings.iconOnly]);
 
   const top = state.settings.navbarPosition === 'top';
+  const pin = useNavPin(!top); // mantiene la barra de abajo pegada al borde visible aunque iOS desplace la página
 
   /*
    * Barra de navegación con la misma estructura que la app de ahorros: el scroll es el del documento y la barra
@@ -211,10 +213,13 @@ function AppShell() {
   const nav = (
     <nav
       className={cx(
-        'z-50 w-full border-slate-800 bg-slate-900/95 backdrop-blur-md',
-        top ? 'sticky top-0 border-b' : 'fixed bottom-0 left-0 right-0 border-t',
+        'z-50 w-full border-slate-800',
+        // Abajo, sin desenfoque: el desenfoque de fondo en una barra fija hace que iOS la descoloque al hacer scroll.
+        top ? 'sticky top-0 border-b bg-slate-900/95 backdrop-blur-md' : 'fixed bottom-0 left-0 right-0 border-t bg-slate-900',
       )}
-      style={top ? { paddingTop: 'env(safe-area-inset-top, 0px)' } : { paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      style={top
+        ? { paddingTop: 'env(safe-area-inset-top, 0px)' }
+        : { paddingBottom: 'env(safe-area-inset-bottom, 0px)', transform: `translate3d(0, ${pin.dy}px, 0)`, visibility: pin.hidden ? 'hidden' : 'visible' }}
       aria-label="Navegación principal"
     >
       <div className="mx-auto grid max-w-xl grid-cols-5">
