@@ -77,11 +77,11 @@ describe('rutina de Face Yoga personalizada', () => {
   it('sin personalizar es la de siempre; por lados reparte a mitades', async () => {
     const { resolveNight, sideSeconds, nightTotal } = await import('../lib/faceYoga');
     const base = resolveNight(undefined);
-    expect(base.steps).toHaveLength(7);
-    expect(nightTotal(base.steps, base.restSec)).toBe(7 * 60 + 6 * 5);
+    expect(base.steps).toHaveLength(12);
+    expect(nightTotal(base.steps, base.restSec)).toBe(445);
     expect(sideSeconds(30)).toEqual([15, 15]);
     expect(sideSeconds(45)).toEqual([23, 22]);
-    const r = resolveNight({ restSec: 10, steps: [{ id: 'mi-1', custom: true, title: 'Mío', seconds: 30, sides: true }, { id: 'lapiz', seconds: 20 }] });
+    const r = resolveNight({ v: 2, restSec: 10, steps: [{ id: 'mi-1', custom: true, title: 'Mío', seconds: 30, sides: true }, { id: 'lapiz', seconds: 20 }] });
     expect(r.steps[0].halves).toEqual(['Lado derecho', 'Lado izquierdo']);
     expect(r.steps[0].seconds).toBe(30);
     expect(r.steps[1].title).toBe('Lápiz dinámico');
