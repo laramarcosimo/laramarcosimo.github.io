@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Camera, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
-import { defaultNightCfg, resolveNight, sideSeconds, type FaceNightCfg, type FaceStepCfg } from '../lib/faceYoga';
+import { activeNightCfg, resolveNight, nightTotal, sideSeconds, type FaceNightCfg, type FaceStepCfg } from '../lib/faceYoga';
 import { compressToBase64 } from '../lib/image';
 import { useStore } from '../lib/store';
 import { cx, uid } from '../lib/utils';
@@ -9,7 +9,7 @@ import { Modal, NumInput } from './ui';
 /** Editor de la rutina de Face Yoga: añadir o quitar ejercicios (con foto), cambiar tiempos y marcar los que van por lados. */
 export function FaceNightEditor({ onClose }: { onClose: () => void }) {
   const { state, update } = useStore();
-  const cfg: FaceNightCfg = state.faceNight ?? defaultNightCfg();
+  const cfg: FaceNightCfg = activeNightCfg(state.faceNight);
   const run = resolveNight(cfg);
   const fileFor = useRef<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -32,7 +32,7 @@ export function FaceNightEditor({ onClose }: { onClose: () => void }) {
       /* imagen ilegible: se deja la anterior */
     }
   };
-  const total = run.steps.reduce((a, s) => a + s.seconds, 0) + Math.max(0, run.steps.length - 1) * run.restSec;
+  const total = nightTotal(run.steps, run.restSec);
 
   return (
     <Modal title="Editar Face Yoga" onClose={onClose}>
@@ -72,7 +72,7 @@ export function FaceNightEditor({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-1.5"><NumInput decimal={false} label="Segundos de descanso" value={cfg.restSec} className="h-9 w-16 rounded-lg bg-slate-900 text-center font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(n) => save({ ...cfg, restSec: n })} /><span className="text-xs text-slate-400">s</span></div>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-ghost flex-1 text-xs" onClick={() => { if (confirm('¿Volver a la rutina original (7 ejercicios de 60 s)? Se pierden tus cambios y fotos.')) update((s) => ({ ...s, faceNight: undefined })); }}><RotateCcw size={14} /> Rutina original</button>
+          <button className="btn btn-ghost flex-1 text-xs" onClick={() => { if (confirm('¿Volver a la rutina original (Rescate cuello y rostro)? Se pierden tus cambios y fotos.')) update((s) => ({ ...s, faceNight: undefined })); }}><RotateCcw size={14} /> Rutina original</button>
           <button className="btn btn-green flex-1" onClick={onClose}>Listo</button>
         </div>
       </div>

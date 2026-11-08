@@ -1,3 +1,4 @@
+import { faceArt } from './faceArt';
 
 export type BodyPosition = 'Sentada' | 'Boca arriba' | 'Boca abajo';
 
@@ -5,6 +6,8 @@ export interface NightStep {
   id: string;
   title: string;
   position: BodyPosition;
+  /** Herramienta (Gua Sha, rodillo, manos, cama). */
+  tool?: string;
   /** Zona / enfoque del ejercicio. */
   focus: string;
   /** Técnica explicada. */
@@ -28,7 +31,7 @@ export const REST_SECONDS = 5;
 
 /** Texto honesto sobre qué esperar de la rutina. */
 export const NIGHT_INFO =
-  'Siete ejercicios de 1 minuto cada uno, con 5 segundos para colocarte entre uno y otro. Son isométricos y sin masajes. La evidencia del yoga facial es limitada (hay un pequeño ensayo clínico de 2018 con mejoras en la plenitud de las mejillas); para papada, cuello y frente los datos son escasos. Si funciona, es gradual: constancia diaria durante 8-12 semanas. Si notas mareo o molestia cervical al colgar o inclinar la cabeza, reduce el recorrido o salta ese ejercicio.';
+  'Rutina de rescate de cuello y rostro con Gua Sha, rodillo de jade, manos y cama. Puedes cambiar ejercicios y tiempos: la duración total se recalcula sola. La evidencia del yoga facial es limitada (hay un pequeño ensayo clínico de 2018 con mejoras en la plenitud de las mejillas); para papada, cuello y frente los datos son escasos. Si funciona, es gradual: constancia diaria durante 8-12 semanas. Si notas mareo o molestia cervical al colgar o inclinar la cabeza, reduce el recorrido o salta ese ejercicio.';
 
 // Imágenes con título y texto integrados (se recortan por encima y por debajo para dejar solo el dibujo).
 const TEXT_CROP = { top: 165, bottom: 1250, h: 1493 };
@@ -117,7 +120,29 @@ export const nightSteps = (date: Date = new Date()): NightStep[] => [
   },
 ];
 
-/** Duración total: 7 ejercicios de 60 s y 6 pausas de 5 s. */
+
+export const REGLA_ORO = 'Regla de oro: aplica 4 a 5 gotas de aceite facial o crema densa en cuello, escote y rostro antes de empezar para que las piedras deslicen suavemente.';
+const R = (id: string, title: string, tool: string, how: string, q: string, art: string, position: BodyPosition = 'Sentada', halves?: [string, string]): NightStep => ({
+  id, title, tool, position, focus: tool, how, image: faceArt(art), url: yt(q), halves,
+});
+const RESCATE_DEF: [NightStep, number][] = [
+  [R('r1', 'Borrador de frente', 'Gua Sha', 'Con la piedra a 15°, raspa en zig-zag sobre las arrugas de la frente y desliza hacia arriba hasta el pelo.', 'gua sha forehead lines technique', 'frente'), 45],
+  [R('r2', 'Apertura y anclaje de entrecejo', 'Gua Sha', 'Sostén y ancla la ceja con una mano mientras acuestas la Gua Sha a 15° y deslizas desde el entrecejo subiendo hacia la sien.', 'gua sha entrecejo anclar ceja técnica', 'entrecejo'), 30],
+  [R('r3', 'Bloqueo ocular', 'Manos', 'Inmoviliza las cejas con los dedos y abre bien los ojos usando solo los párpados, sin arrugar la frente.', 'face yoga eyelid lift anchor eyebrows exercise', 'ocular'), 30],
+  [R('r4', 'Planchado labio superior', 'Gua Sha', 'Oculta levemente los labios y desliza el borde plano de la piedra desde bajo la nariz hacia las comisuras.', 'gua sha upper lip lines technique', 'labio'), 30],
+  [R('r5', 'Alisado eleva-pómulos', 'Rodillo de jade', 'Con el cabezal grande, rueda desde la aleta de la nariz hacia las sienes para elevar mejillas sin arrugar nada.', 'jade roller cheekbones lift technique', 'pomulo', 'Sentada', ['Lado derecho', 'Lado izquierdo']), 40],
+  [R('r6', 'Escultor mandibular', 'Gua Sha', 'Encaja la hendidura V de la piedra en el hueso de la mandíbula y arrastra firme desde la barbilla hasta la oreja.', 'gua sha jawline sculpting technique', 'mandibula', 'Sentada', ['Lado derecho', 'Lado izquierdo']), 40],
+  [R('r7', 'Borrador de líneas del cuello', 'Gua Sha', 'Con la piedra casi plana (15°), realiza pases rápidos y suaves de zig-zag directamente sobre tus líneas horizontales.', 'gua sha neck lines technique', 'cuello'), 45],
+  [R('r8', 'Planchado de cuello', 'Rodillo de jade', 'Cabezal grande. Rueda desde las clavículas hacia arriba hasta la barbilla con presión media para alisar la piel.', 'jade roller neck upward technique', 'rodillo'), 45],
+  [R('r9', 'Drenaje cervical', 'Rodillo de jade', 'Rueda el cabezal grande desde detrás de las orejas hacia abajo por los laterales del cuello hasta las clavículas.', 'jade roller neck lymphatic drainage', 'drenaje'), 30],
+  [R('r10', 'Besos al techo con anclaje', 'Manos', 'Apoya tus palmas fijando la piel sobre las clavículas, mira arriba y proyecta besos para estirar el platisma.', 'ceiling kiss neck platysma exercise', 'besos'), 45],
+  [R('r11', 'Cabeza suspendida al borde', 'Cama', 'Tumbada boca arriba en la cama, deja la cabeza al aire un par de centímetros por el borde para tonificar los flexores.', 'head hanging off bed neck exercise', 'suspendida', 'Boca arriba'), 35],
+  [R('r12', 'Extensión cervical', 'Cama', 'Tumbada boca abajo en la cama, eleva suavemente el pecho y relaja hombros para corregir la postura que provoca las arrugas.', 'prone neck extension exercise posture', 'extension', 'Boca abajo'), 30],
+];
+export const RESCATE: NightStep[] = RESCATE_DEF.map(([s]) => s);
+const ALL = (date: Date): NightStep[] => [...RESCATE, OCULAR, FRONTAL, ...nightSteps(date)];
+
+/** Duración total (rutina antigua): 7 ejercicios de 60 s y 6 pausas de 5 s. */
 export const NIGHT_TOTAL_SECONDS = 7 * WORK_SECONDS + 6 * REST_SECONDS;
 
 /** Un ejercicio de la rutina tal como lo personalizas: se guarda solo lo que cambias. */
@@ -137,18 +162,24 @@ export interface FaceStepCfg {
 export interface FaceNightCfg {
   restSec: number;
   steps: FaceStepCfg[];
+  /** Versión de la rutina por defecto (2 = Rescate cuello y rostro). */
+  v?: number;
 }
 export type RunStep = NightStep & { seconds: number };
 
-export const defaultNightCfg = (date: Date = new Date()): FaceNightCfg => ({
-  restSec: REST_SECONDS,
-  steps: nightSteps(date).map((s) => ({ id: s.id, seconds: WORK_SECONDS, sides: !!s.halves })),
+export const defaultNightCfg = (_date: Date = new Date()): FaceNightCfg => ({
+  v: 2,
+  restSec: 0,
+  steps: RESCATE_DEF.map(([s, sec]) => ({ id: s.id, seconds: sec, sides: !!s.halves })),
 });
+
+/** Config activa: una guardada con la rutina antigua se sustituye por la de Rescate. */
+export const activeNightCfg = (cfg: FaceNightCfg | undefined, date: Date = new Date()): FaceNightCfg => (cfg && cfg.v === 2 ? cfg : defaultNightCfg(date));
 
 /** Aplica tu personalización a la biblioteca. Sin personalizar, es la rutina de siempre. */
 export const resolveNight = (cfg: FaceNightCfg | undefined, date: Date = new Date()): { steps: RunStep[]; restSec: number } => {
-  const c = cfg ?? defaultNightCfg(date);
-  const lib = new Map<string, NightStep>([OCULAR, FRONTAL, ...nightSteps(date)].map((s) => [s.id, s]));
+  const c = activeNightCfg(cfg, date);
+  const lib = new Map<string, NightStep>(ALL(date).map((s) => [s.id, s]));
   const steps = c.steps.map((k): RunStep => {
     const base = lib.get(k.id);
     const seconds = Math.max(5, Math.round(k.seconds || WORK_SECONDS));
@@ -161,6 +192,7 @@ export const resolveNight = (cfg: FaceNightCfg | undefined, date: Date = new Dat
       how: k.how ?? base?.how ?? '',
       image: own ? k.image! : base?.image ?? '',
       crop: own ? undefined : base?.crop,
+      tool: base?.tool,
       url: base?.url ?? '',
       halves: k.sides ? base?.halves ?? ['Lado derecho', 'Lado izquierdo'] : undefined,
       pulse: base?.pulse,

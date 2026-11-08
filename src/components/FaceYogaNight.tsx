@@ -1,6 +1,6 @@
 import { ChevronDown, ExternalLink, Moon, Pause, Play, SkipBack, SkipForward, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NIGHT_INFO, nightTotal, resolveNight, sideSeconds, type NightStep } from '../lib/faceYoga';
+import { NIGHT_INFO, REGLA_ORO, nightTotal, resolveNight, sideSeconds, type NightStep } from '../lib/faceYoga';
 import { useStore } from '../lib/store';
 import { BUZZ, vibrate } from '../lib/feedback';
 import { useScrollLock } from '../lib/scrollLock';
@@ -86,12 +86,13 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
   const advance = useCallback(() => {
     if (phase === 'work') {
       if (i >= steps.length - 1) finish();
+      else if (restSec === 0) begin('work', i + 1);
       else begin('rest', i);
     } else if (phase === 'rest') {
       sound.done();
       begin('work', i + 1);
     }
-  }, [phase, i, steps.length, begin, finish, sound]);
+  }, [phase, i, steps.length, restSec, begin, finish, sound]);
 
   useEffect(() => {
     if (!running) return;
@@ -150,6 +151,7 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
     sound.unlock();
     if (phase === 'work') {
       if (i >= steps.length - 1) finish();
+      else if (restSec === 0) begin('work', i + 1);
       else begin('rest', i);
     } else if (phase === 'rest') begin('work', i + 1);
   };
@@ -181,13 +183,14 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
         {phase === 'ready' && (
           <div className="mx-auto max-w-sm pt-4">
             <h2 className="text-center text-xl font-black text-white">Rutina nocturna</h2>
-            <p className="mt-1 text-center text-xs" style={soft}>{steps.length} ejercicios · hoy empiezas con «{steps[0].title}»</p>
+            <p className="mt-1 text-center text-xs" style={soft}>{steps.length} ejercicios · {Math.floor(nightTotal(steps, restSec) / 60)} min {nightTotal(steps, restSec) % 60} s</p>
             <ol className="mt-4 space-y-1.5">
               {steps.map((s, k) => (
                 <li key={s.id} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm text-white"><span className="w-5 text-center font-bold text-emerald-300">{k + 1}</span><span className="min-w-0 flex-1 truncate">{s.title}</span><span className="shrink-0 text-[11px]" style={soft}>{s.position}</span></li>
               ))}
             </ol>
-            <p className="mt-4 rounded-2xl bg-white/5 p-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,.7)' }}>{NIGHT_INFO}</p>
+            <p className="mt-4 rounded-2xl bg-emerald-500/15 p-3 text-xs font-semibold leading-relaxed text-emerald-200">{REGLA_ORO}</p>
+            <p className="mt-3 rounded-2xl bg-white/5 p-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,.7)' }}>{NIGHT_INFO}</p>
           </div>
         )}
 
@@ -205,8 +208,9 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
             </div>
             <h3 className="mt-3 text-center text-xl font-bold text-white">{step.title}</h3>
             <div className="mt-2 flex flex-wrap justify-center gap-1.5 text-xs">
+              {step.tool && <span className="rounded-full bg-amber-500/20 px-2.5 py-1 font-semibold text-amber-300">{step.tool}</span>}
               <span className="rounded-full bg-emerald-500/20 px-2.5 py-1 font-semibold text-emerald-300">Posición: {step.position}</span>
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-white">Enfoque: {step.focus}</span>
+              {step.tool ? null : <span className="rounded-full bg-white/10 px-2.5 py-1 text-white">Enfoque: {step.focus}</span>}
             </div>
             {step.halves && <p className="mt-3 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-bold text-white">{step.halves[half]} · {half === 0 ? sideSeconds(step.seconds)[0] - elapsed : step.seconds - elapsed} s</p>}
             {step.pulse && elapsed % step.pulse.every < 2 && elapsed > 0 && <p className="mt-3 rounded-full bg-sky-500 px-4 py-1.5 text-sm font-bold text-white">{step.pulse.label}</p>}
@@ -217,7 +221,7 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
               </summary>
               <div className="px-4 pb-4">
                 <p className="text-left text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,.88)' }}>{step.how}</p>
-                <a className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white active:scale-95" href={step.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> Buscar vídeo en YouTube</a>
+                <a className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white active:scale-95" href={step.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> Ver vídeo de la técnica</a>
               </div>
             </details>
           </div>
