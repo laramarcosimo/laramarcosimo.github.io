@@ -1,14 +1,15 @@
-import { Flame, Check, Droplet, Eye, EyeOff, Footprints, Minus, Moon, Pencil, Pill, Plus, Scale, Scissors } from 'lucide-react';
+import { Flame, Check, Droplet, Eye, EyeOff, Footprints, Minus, Moon, Pencil, CalendarDays, Pill, Plus, Scale, Scissors } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLayoutEdit } from '../lib/layoutEdit';
 import { useStore } from '../lib/store';
 import type { HabitDay } from '../lib/types';
 import { cx, dayKey, round, uid } from '../lib/utils';
 import { faceStreak } from '../lib/streaks';
+import { HabitsCalendar } from './HabitsCalendar';
 import { FaceYogaNight } from './FaceYogaNight';
 import { FaceNightEditor } from './FaceNightEditor';
 import { nightTotal, resolveNight } from '../lib/faceYoga';
-import { Bar, NumInput } from './ui';
+import { Bar, Modal, NumInput } from './ui';
 import { isConnected } from '../lib/cloud';
 import { applySleepEvents, pullSleepEvents } from '../lib/sleepCloud';
 import { applyStepsEvents, pullStepsEvents } from '../lib/stepsCloud';
@@ -57,6 +58,7 @@ export function HabitsGrid() {
   const [stepsDay, setStepsDay] = useState(key);
   const [faceDay, setFaceDay] = useState(key);
   const [hairDay, setHairDay] = useState(key);
+  const [hairCal, setHairCal] = useState(false);
   const setDay = (k: string, p: Partial<HabitDay>) => update((s) => ({ ...s, habits: { ...s.habits, [k]: { ...(s.habits[k] ?? { agua: 0 }), ...p } } }));
   const stepsH: HabitDay = state.habits[stepsDay] ?? { agua: 0 };
   const faceH: HabitDay = state.habits[faceDay] ?? { agua: 0 };
@@ -67,6 +69,8 @@ export function HabitsGrid() {
   const faceDays = faceStreak(state.habits);
   const hairH: HabitDay = state.habits[hairDay] ?? { agua: 0 };
   const lastWash = Object.keys(state.habits).filter((k) => state.habits[k]?.hairWash && k <= key).sort().pop();
+  const lastDeep = Object.keys(state.habits).filter((k) => state.habits[k]?.hairDeep && k <= key).sort().pop();
+  const deepAgo = lastDeep ? Math.round((Date.parse(`${key}T12:00:00`) - Date.parse(`${lastDeep}T12:00:00`)) / 86400000) : null;
   const washAgo = lastWash ? Math.round((Date.parse(`${key}T12:00:00`) - Date.parse(`${lastWash}T12:00:00`)) / 86400000) : null;
   const [night, setNight] = useState(false);
   const [editNight, setEditNight] = useState(false);
@@ -190,10 +194,16 @@ export function HabitsGrid() {
             {lastWash && washAgo !== 0 && <div className="text-[10px] text-slate-500">Último lavado: {new Date(`${lastWash}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</div>}
           </div>
           <DayPick value={hairDay} today={key} label="Día del lavado de pelo" onChange={setHairDay} />
-          <button className={cx('btn !py-1.5 text-xs', hairH.hairWash ? 'btn-ghost' : 'btn-green')} onClick={() => setDay(hairDay, { hairWash: !hairH.hairWash })}>{hairH.hairWash ? (hairDay === key ? 'Quitar lavado de hoy' : 'Quitar ese día') : hairDay === key ? 'Me lo lavé hoy' : 'Marcar lavado ese día'}</button>
+          {deepAgo !== null && <div className="text-[10px] text-violet-400">Última limpieza profunda: {deepAgo === 0 ? 'hoy' : `hace ${deepAgo} día${deepAgo === 1 ? '' : 's'}`}</div>}
+          <div className="grid grid-cols-2 gap-1.5">
+            <button className={cx('btn !px-1 !py-1.5 text-[11px]', hairH.hairWash ? 'btn-ghost' : 'btn-green')} onClick={() => setDay(hairDay, hairH.hairWash ? { hairWash: false, hairDeep: false } : { hairWash: true })}>{hairH.hairWash ? 'Quitar lavado' : hairDay === key ? 'Lavado hoy' : 'Lavado ese día'}</button>
+            <button className={cx('btn !px-1 !py-1.5 text-[11px]', hairH.hairDeep ? 'btn-ghost' : 'btn-blue')} onClick={() => setDay(hairDay, hairH.hairDeep ? { hairDeep: false } : { hairDeep: true, hairWash: true })}>{hairH.hairDeep ? 'Quitar profunda' : 'Limpieza profunda'}</button>
+          </div>
+          <button className="btn btn-ghost !py-1.5 text-xs" onClick={() => setHairCal(true)}><CalendarDays size={14} /> Ver calendario</button>
         </Tile>}
       </div>
 
+      {hairCal && <Modal title="Calendario del pelo" onClose={() => setHairCal(false)}><HabitsCalendar only="pelo" /></Modal>}
       {editNight && <FaceNightEditor onClose={() => setEditNight(false)} />}
       {night && <FaceYogaNight onComplete={() => setDay(faceDay, { faceYoga: true })} onClose={() => setNight(false)} />}
       {supps.length > 0 && (

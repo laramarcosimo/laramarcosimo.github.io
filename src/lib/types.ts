@@ -379,6 +379,8 @@ export interface HabitDay {
   faceYoga?: boolean;
   /** Te lavaste el pelo este día. */
   hairWash?: boolean;
+  /** Limpieza profunda del cuero cabelludo/pelo ese día (también cuenta como lavado). */
+  hairDeep?: boolean;
   /** Suplementos tomados hoy (id → true). */
   supps?: Record<string, boolean>;
 }

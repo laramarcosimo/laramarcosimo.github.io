@@ -9,7 +9,7 @@ const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MONTH_FMT = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' });
 const DAY_FMT = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
-type Mode = 'pasos' | 'sueno' | 'face' | 'pelo';
+export type Mode = 'pasos' | 'sueno' | 'face' | 'pelo';
 const MODES: { id: Mode; label: string; icon: typeof Moon }[] = [
   { id: 'pasos', label: 'Pasos', icon: Footprints },
   { id: 'sueno', label: 'Sueño', icon: Moon },
@@ -27,9 +27,9 @@ const fmtSteps = (n: number): string => n.toLocaleString('es-ES');
 const short = (n: number): string => (n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')}k` : String(n));
 
 /** Calendario de hábitos: pasos, horas de sueño y días de Face Yoga. Cada día se colorea según llegaste a tu meta; al tocarlo ves el detalle. */
-export function HabitsCalendar() {
+export function HabitsCalendar({ only }: { only?: Mode } = {}) {
   const { state } = useStore();
-  const [mode, setMode] = useState<Mode>('pasos');
+  const [mode, setMode] = useState<Mode>(only ?? 'pasos');
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -47,13 +47,13 @@ export function HabitsCalendar() {
   const val = (k: string): number => {
     const h = habit(k);
     if (!h) return 0;
-    return mode === 'pasos' ? h.steps ?? 0 : mode === 'sueno' ? h.sleepHours ?? 0 : mode === 'pelo' ? (h.hairWash ? 1 : 0) : h.faceYoga ? 1 : 0;
+    return mode === 'pasos' ? h.steps ?? 0 : mode === 'sueno' ? h.sleepHours ?? 0 : mode === 'pelo' ? (h.hairDeep ? 2 : h.hairWash ? 1 : 0) : h.faceYoga ? 1 : 0;
   };
   const tone = (k: string): string => {
     const v = val(k);
     if (v <= 0) return 'text-slate-400';
     if (mode === 'face') return 'bg-emerald-500/25 text-emerald-300';
-    if (mode === 'pelo') return 'bg-pink-500/25 text-pink-300';
+    if (mode === 'pelo') return v === 2 ? 'bg-violet-500/35 text-violet-200' : 'bg-pink-500/25 text-pink-300';
     if (mode === 'pasos') {
       if (!stepGoal) return 'bg-emerald-500/25 text-emerald-300';
       return v >= stepGoal ? 'bg-emerald-500/25 text-emerald-300' : v >= stepGoal * 0.6 ? 'bg-amber-500/25 text-amber-300' : 'bg-red-500/25 text-red-300';
@@ -71,7 +71,7 @@ export function HabitsCalendar() {
   const avg = filled.length ? filled.reduce((a, k) => a + val(k), 0) / filled.length : 0;
   const summary =
     mode === 'pelo'
-      ? `${filled.length} ${filled.length === 1 ? 'lavado' : 'lavados'} este mes`
+      ? `${filled.length} ${filled.length === 1 ? 'lavado' : 'lavados'} este mes · ${filled.filter((k) => val(k) === 2).length} con limpieza profunda`
       : mode === 'face'
       ? `${filled.length} ${filled.length === 1 ? 'día' : 'días'} de Face Yoga este mes`
       : filled.length === 0
@@ -82,7 +82,7 @@ export function HabitsCalendar() {
 
   const legend: [string, string][] =
     mode === 'pelo'
-      ? [['bg-pink-500', 'Lavado']]
+      ? [['bg-pink-500', 'Lavado'], ['bg-violet-500', 'Limpieza profunda']]
       : mode === 'face'
       ? [['bg-emerald-500', 'Hecho']]
       : mode === 'pasos'
@@ -91,7 +91,7 @@ export function HabitsCalendar() {
 
   return (
     <div className="card !p-3">
-      <div className="mb-2 grid grid-cols-4 gap-1 rounded-xl bg-slate-800 p-1" role="tablist" aria-label="Qué ver en el calendario">
+      <div className={cx('mb-2 grid grid-cols-4 gap-1 rounded-xl bg-slate-800 p-1', only && 'hidden')} role="tablist" aria-label="Qué ver en el calendario">
         {MODES.map((m) => (
           <button key={m.id} role="tab" aria-selected={mode === m.id} onClick={() => setMode(m.id)} className={cx('flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-semibold', mode === m.id ? 'bg-accent text-white' : 'text-slate-300')}>
             <m.icon size={13} /> {m.label}
@@ -139,7 +139,7 @@ function DayHabits({ dayKeyStr, stepGoal, onClose }: { dayKeyStr: string; stepGo
     [<Footprints key="s" size={16} />, 'Pasos', steps > 0 ? `${fmtSteps(steps)}${stepGoal ? ` de ${fmtSteps(stepGoal)}` : ''}` : 'Sin datos'],
     [<Moon key="m" size={16} />, 'Sueño', sleep > 0 ? fmtH(sleep) : 'Sin datos'],
     [<Sparkles key="f" size={16} />, 'Face Yoga', h?.faceYoga ? 'Hecho' : 'No hecho'],
-    [<Scissors key="p" size={16} />, 'Lavado de pelo', h?.hairWash ? 'Sí' : 'No'],
+    [<Scissors key="p" size={16} />, 'Pelo', h?.hairDeep ? 'Limpieza profunda' : h?.hairWash ? 'Lavado' : 'No'],
   ];
   return (
     <Modal title={title} onClose={onClose}>
