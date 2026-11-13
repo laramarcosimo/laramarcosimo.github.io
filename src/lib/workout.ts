@@ -55,7 +55,7 @@ export const withPrevious = (sets: SetLog[], prev: LogSet[], mark: PrevMark = ''
     const p = pool[Math.min(n[key] ?? 0, pool.length - 1)];
     n[key] = (n[key] ?? 0) + 1;
     const cardio = p.min !== undefined || p.km !== undefined;
-    return { ...s, previous: (cardio ? `${p.min ?? 0} min · ${p.km ?? 0} km` : p.secs && !p.reps ? `${p.weight > 0 ? `${fmtKg(p.weight)} kg · ` : ''}${p.secs} s` : fmtPrev(p.weight, p.reps, timed)) + suffix };
+    return { ...s, previous: (cardio ? `${p.min ?? 0} min · ${p.km ?? 0} km` : p.secs && !p.reps ? `${p.weight > 0 ? `${fmtKg(p.weight)} kg · ` : ''}${p.secs} s` : fmtPrev(p.weight, p.reps, timed) + (p.secs ? ` · ${p.secs} s` : '') + (p.partials ? ` · ${p.partials} cortas` : '')) + suffix };
   });
 };
 

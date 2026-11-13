@@ -4,12 +4,14 @@ import { num } from '../lib/utils';
 import type { Set as SetLog } from '../lib/types';
 import { cx } from '../lib/utils';
 import { NumInput } from './ui';
+import { machineToReal } from '../lib/cardio';
 import { TreadmillScan, type CardioResult } from './TreadmillScan';
 
 const INPUT = 'h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent';
 
 /** Series de cardio (cinta, elíptica, bici): tiempo en minutos y distancia en km, con decimales con punto o coma. */
-export function CardioBlock({ sets, onPatch, onAdd, onRemoveLast, onApplyScan }: {
+export function CardioBlock({ weightKg, sets, onPatch, onAdd, onRemoveLast, onApplyScan }: {
+  weightKg: number;
   sets: SetLog[];
   onPatch: (id: string, p: Partial<SetLog>) => void;
   onAdd: () => void;
@@ -42,7 +44,10 @@ export function CardioBlock({ sets, onPatch, onAdd, onRemoveLast, onApplyScan }:
             <NumInput value={s.min ?? 0} placeholder={m?.[1] ?? '0'} className={INPUT} onChange={(v) => onPatch(s.id, { min: v })} />
             <NumInput value={s.km ?? 0} placeholder={m?.[2] ?? '0.0'} className={INPUT} onChange={(v) => onPatch(s.id, { km: v })} />
             <button className={cx('flex h-9 items-center justify-center rounded-md', s.completed ? 'bg-fuel text-slate-950' : 'bg-slate-800 text-slate-500')} onClick={() => toggle(s)} aria-label="Completar serie"><Check size={20} /></button>
-            {s.kcal ? <div className="col-span-5 -mt-0.5 pl-1 text-[10px] text-emerald-500">~{s.kcal} kcal reales (ACSM)</div> : null}
+            <label className="col-span-5 flex items-center gap-2 pl-1 text-[11px] font-semibold text-slate-400">Kcal de la máquina
+              <NumInput decimal={false} label="Calorías que marca la máquina" value={s.machineKcal ?? 0} placeholder="0" className="h-8 w-20 rounded-md bg-slate-800 text-center text-sm font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => onPatch(s.id, v > 0 ? { machineKcal: v, kcal: machineToReal(v, weightKg) } : { machineKcal: undefined, kcal: undefined })} />
+            </label>
+            {s.kcal ? <div className="col-span-5 -mt-0.5 pl-1 text-[10px] text-emerald-500">{s.machineKcal ? `~${s.kcal} kcal para tus ${weightKg} kg (la máquina marcó ${s.machineKcal})` : `~${s.kcal} kcal reales (ACSM)`}</div> : null}
           </div>
         );
       })}

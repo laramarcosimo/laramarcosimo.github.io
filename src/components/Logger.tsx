@@ -15,6 +15,7 @@ import { PlateCalc } from './PlateCalc';
 import { analyzeProgression, LOWER_TEXT, lowerTo, repRange, struggledSets } from '../lib/progression';
 import { LiveCoachSheet } from './LiveCoachSheet';
 import { isCardio } from '../lib/exercises';
+import { IsoTimer } from './IsoTimer';
 import { flatKcal } from '../lib/cardio';
 import { WarmupModal } from './WarmupModal';
 import { TimeChips } from './TimeChips';
@@ -58,7 +59,7 @@ const fmtClock = (sec: number): string => {
   return [h, m, s].map((x) => String(x).padStart(2, '0')).join(':');
 };
 
-const toLogSets = (sets: SetLog[]) => sets.filter((s) => s.completed).map((s) => ({ side: s.side, type: s.type, weight: s.weight, reps: s.reps, rpe: s.rpe, ...(s.secs ? { secs: s.secs } : {}), ...(s.partials ? { partials: s.partials } : {}), ...(s.min !== undefined || s.km !== undefined ? { min: s.min, km: s.km, kcal: s.kcal } : {}) }));
+const toLogSets = (sets: SetLog[]) => sets.filter((s) => s.completed).map((s) => ({ side: s.side, type: s.type, weight: s.weight, reps: s.reps, rpe: s.rpe, ...(s.secs ? { secs: s.secs } : {}), ...(s.partials ? { partials: s.partials } : {}), ...(s.min !== undefined || s.km !== undefined || s.kcal !== undefined ? { min: s.min, km: s.km, kcal: s.kcal, ...(s.machineKcal ? { machineKcal: s.machineKcal } : {}) } : {}) }));
 
 export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; onRest: (seconds?: number) => void; onBack: () => void }) {
   const { state, update } = useStore();
@@ -125,6 +126,36 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
     patchSet(we.id, s.id, { rpe });
     setRpeFor(null);
     showTip(we, { type: s.type, weight: s.weight, reps: s.reps, rpe });
+  };
+
+  /** Al tocar «Anterior» se copian peso, repeticiones, segundos y cortas de la última vez. */
+  const fillFromPrev = (we: WorkoutExercise, s: SetLog) => {
+    const p = s.previous ?? '';
+    const ms = p.match(/(\d+) s$/);
+    const kg = p.match(/^([\d.,]+) kg/);
+    const m = p.match(/([\d.,]+) kg x (\d+)/);
+    const mt = p.match(/^(\d+) s/);
+    const sec = p.match(/ · (\d+) s/);
+    const cut = p.match(/ · (\d+) cortas/);
+    if (byTimeOf(we, exOf(we.exerciseId)) && ms) return patchSet(we.id, s.id, { weight: num(kg?.[1] ?? '0'), secs: num(ms[1]) });
+    if (m) return patchSet(we.id, s.id, { weight: num(m[1]), reps: num(m[2]), ...(sec ? { secs: num(sec[1]) } : {}), ...(cut ? { partials: num(cut[1]) } : {}) });
+    if (kg && ms) return patchSet(we.id, s.id, { weight: num(kg[1]), secs: num(ms[1]) });
+    if (mt) patchSet(we.id, s.id, { reps: num(mt[1]) });
+  };
+
+  /** Cronómetro isométrico: guarda los segundos aguantados en la siguiente serie libre (o crea una nueva). */
+  const saveIso = (we: WorkoutExercise, secs: number) => {
+    patchEx(we.id, (e) => {
+      const idx = e.sets.findIndex((x) => !x.completed && x.type !== 'warmup');
+      if (idx < 0) {
+        const last = [...e.sets].reverse().find((x) => x.type !== 'warmup');
+        return { ...e, sets: [...e.sets, { ...newSet('normal', last?.weight ?? 0, 0), secs, completed: true }] };
+      }
+      const cur = e.sets[idx];
+      const w = cur.weight || num(cur.previous?.match(/^([\d.,]+) kg/)?.[1] ?? '0');
+      return { ...e, sets: e.sets.map((x, i) => (i === idx ? { ...x, weight: w, secs, completed: true } : x)) };
+    });
+    if (state.settings.restVibrate) vibrate(40);
   };
 
   const toggleDone = (we: WorkoutExercise, s: SetLog) => {
@@ -343,10 +374,12 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
               );
             })()}
             {!ex?.timed && !isCardio(ex) && <button className="mt-1 flex items-center gap-1 px-1 text-xs font-semibold text-accent" onClick={() => cycleRest(we)} aria-label="Cambiar descanso"><Timer size={12} strokeWidth={1.75} /> Descanso: {fmtRest(restFor(we, ex, state.settings.restDefault, state.settings.restAuto !== false, workout.restPlan === 'optimal'))}</button>}
+            {we.exerciseId === 'wall-sit' && <IsoTimer weight={we.sets.find((x) => !x.completed && x.type !== 'warmup')?.weight ?? 0} setNo={we.sets.filter((x) => x.completed && x.type !== 'warmup').length + 1} best={(() => { const x = we.sets.find((q) => !q.completed && q.type !== 'warmup'); return num(x?.previous?.match(/(\d+) s(?= ·|$)/)?.[1] ?? '0'); })()} onStop={(secs) => saveIso(we, secs)} />}
             {ex?.instructions && howOpen.includes(we.id) && <p className="mt-2 rounded-lg bg-slate-800/60 p-2.5 text-xs leading-relaxed text-slate-300">{ex.instructions}</p>}
 
             {isCardio(ex) ? (
               <CardioBlock
+                weightKg={state.profile.weight}
                 sets={we.sets}
                 onPatch={(id, p) => patchSet(we.id, id, p)}
                 onAdd={() => patchEx(we.id, (e) => ({ ...e, sets: [...e.sets, newSet()] }))}
@@ -443,11 +476,11 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
                     <button className={cx('h-9 rounded-md text-sm font-bold', BADGE_STYLE[s.type])} onClick={() => setTypeMenu(typeMenu === s.id ? null : s.id)} aria-label="Tipo de serie">
                       {s.type === 'normal' ? n : SET_BADGE[s.type]}{s.side && <span className={cx('ml-0.5 text-[10px]', s.side === 'D' ? 'text-sky-400' : 'text-amber-500')}>{sideLetter(s.side)}</span>}
                     </button>
-                    {!(!isCore(ex) && (we.extras ?? defaultExtras(we.exerciseId))) && <button className="truncate text-center text-xs text-slate-500" onClick={() => { const m = s.previous?.match(/([\d.,]+) kg x (\d+)/); const mt = s.previous?.match(/^(\d+) s/); const ms = s.previous?.match(/(\d+) s$/); if (byTimeOf(we, ex) && ms) patchSet(we.id, s.id, { weight: num(s.previous?.match(/^([\d.,]+) kg/)?.[1] ?? '0'), secs: num(ms[1]) }); else if (m) patchSet(we.id, s.id, { weight: num(m[1]), reps: num(m[2]) }); else if (mt) patchSet(we.id, s.id, { reps: num(mt[1]) }); }}>{s.previous ?? '–'}</button>}
+                    {!(!isCore(ex) && (we.extras ?? defaultExtras(we.exerciseId))) && <button className="truncate text-center text-xs text-slate-500" onClick={() => fillFromPrev(we, s)}>{s.previous ?? '–'}</button>}
                     {ex?.timed ? <span className="text-center text-slate-600">–</span> : <div className="min-w-0"><NumInput value={s.weight} placeholder={s.previous?.match(/^([\d.,]+) kg/)?.[1] ?? '0.0'} className="h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => patchSet(we.id, s.id, { weight: v })} />{perHandOf(we, ex) && s.weight > 0 && <div className="text-center text-[10px] leading-tight text-slate-400">Total {fmtKg(s.weight * 2)} kg</div>}</div>}
                     {byTimeOf(we, ex) ? <NumInput decimal={false} value={s.secs ?? 0} placeholder={s.previous?.match(/(\d+) s$/)?.[1] ?? 'seg'} className="h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => patchSet(we.id, s.id, { secs: v > 0 ? v : undefined })} /> : <NumInput decimal={false} value={s.reps} placeholder={s.previous?.match(/x (\d+)/)?.[1] ?? s.previous?.match(/^(\d+) s/)?.[1]} className="h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => patchSet(we.id, s.id, { reps: v })} />}
                     {(!isCore(ex) && (we.extras ?? defaultExtras(we.exerciseId))) && <>
-                      <NumInput decimal={false} label="Segundos de mantenimiento" placeholder="Seg" value={s.secs ?? 0} className="h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => patchSet(we.id, s.id, { secs: v > 0 ? v : undefined })} />
+                      <NumInput decimal={false} label="Segundos de mantenimiento" placeholder={s.previous?.match(/(\d+) s(?= ·|$)/)?.[1] ?? 'Seg'} value={s.secs ?? 0} className="h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => patchSet(we.id, s.id, { secs: v > 0 ? v : undefined })} />
                       <NumInput decimal={false} label="Repeticiones cortas" placeholder="Cortas" value={s.partials ?? 0} className="h-9 w-full rounded-md bg-slate-800 text-center text-base font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(v) => patchSet(we.id, s.id, { partials: v > 0 ? v : undefined })} />
                     </>}
                     <button className={cx('flex h-9 items-center justify-center rounded-md', s.completed ? 'bg-fuel text-slate-950' : 'bg-slate-800 text-slate-500')} onClick={() => toggleDone(we, s)} aria-label="Completar serie">

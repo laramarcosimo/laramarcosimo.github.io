@@ -165,6 +165,8 @@ export interface Set {
   /** Segundos de mantenimiento (isométrico) y repeticiones cortas (parciales). */
   secs?: number;
   partials?: number;
+  /** Calorías que marcó la máquina (cinta): `kcal` es su traducción a tu peso. */
+  machineKcal?: number;
 }
 
 export interface WorkoutExercise {
@@ -230,6 +232,7 @@ export interface RoutineTemplate {
 }
 
 export interface LogSet {
+  machineKcal?: number;
   secs?: number;
   partials?: number;
   min?: number;
@@ -374,6 +377,8 @@ export interface HabitDay {
   steps?: number;
   /** Face Yoga nocturno completado. */
   faceYoga?: boolean;
+  /** Te lavaste el pelo este día. */
+  hairWash?: boolean;
   /** Suplementos tomados hoy (id → true). */
   supps?: Record<string, boolean>;
 }

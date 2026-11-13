@@ -16,3 +16,9 @@ export const parseClock = (v: unknown): number => {
 
 /** Estimación plana (sin pendiente) a partir de tiempo y distancia, para series de cardio sin escanear. */
 export const flatKcal = (minutes: number, km: number, weightKg: number): number => (minutes > 0 && km > 0 ? acsmKcal((km / minutes) * 60, 0, minutes, weightKg) : 0);
+
+/** Las máquinas calculan las kcal con un peso de referencia (suele rondar los 70 kg si no se introduce el tuyo). */
+export const MACHINE_REF_KG = 70;
+/** Traduce las kcal que marca la máquina a tu peso corporal (el gasto crece de forma proporcional al peso). */
+export const machineToReal = (machineKcal: number, weightKg: number, refKg: number = MACHINE_REF_KG): number =>
+  machineKcal > 0 && weightKg > 0 ? Math.round((machineKcal * weightKg) / refKg) : 0;

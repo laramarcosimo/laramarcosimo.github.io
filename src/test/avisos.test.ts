@@ -88,3 +88,12 @@ describe('rutina de Face Yoga personalizada', () => {
     expect(nightTotal(r.steps, r.restSec)).toBe(60);
   });
 });
+
+describe('cardio: kcal de la máquina a tu peso', () => {
+  it('escala proporcional al peso (referencia 70 kg)', async () => {
+    const { machineToReal } = await import('../lib/cardio');
+    expect(machineToReal(100, 70)).toBe(100);
+    expect(machineToReal(100, 55.3)).toBe(79);
+    expect(machineToReal(0, 55)).toBe(0);
+  });
+});

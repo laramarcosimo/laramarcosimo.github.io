@@ -1,4 +1,4 @@
-import { Flame, Check, Droplet, Eye, EyeOff, Footprints, Minus, Moon, Pencil, Pill, Plus, Scale } from 'lucide-react';
+import { Flame, Check, Droplet, Eye, EyeOff, Footprints, Minus, Moon, Pencil, Pill, Plus, Scale, Scissors } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLayoutEdit } from '../lib/layoutEdit';
 import { useStore } from '../lib/store';
@@ -56,6 +56,7 @@ export function HabitsGrid() {
   const waterGoal = Math.max(2, Math.round(state.profile.weight * 0.035 * 4) / 4);
   const [stepsDay, setStepsDay] = useState(key);
   const [faceDay, setFaceDay] = useState(key);
+  const [hairDay, setHairDay] = useState(key);
   const setDay = (k: string, p: Partial<HabitDay>) => update((s) => ({ ...s, habits: { ...s.habits, [k]: { ...(s.habits[k] ?? { agua: 0 }), ...p } } }));
   const stepsH: HabitDay = state.habits[stepsDay] ?? { agua: 0 };
   const faceH: HabitDay = state.habits[faceDay] ?? { agua: 0 };
@@ -64,6 +65,9 @@ export function HabitsGrid() {
   const sleep = h.sleepHours ?? 0;
   const sleeping = state.sleepStart !== null;
   const faceDays = faceStreak(state.habits);
+  const hairH: HabitDay = state.habits[hairDay] ?? { agua: 0 };
+  const lastWash = Object.keys(state.habits).filter((k) => state.habits[k]?.hairWash && k <= key).sort().pop();
+  const washAgo = lastWash ? Math.round((Date.parse(`${key}T12:00:00`) - Date.parse(`${lastWash}T12:00:00`)) / 86400000) : null;
   const [night, setNight] = useState(false);
   const [editNight, setEditNight] = useState(false);
   const nightRun = resolveNight(state.faceNight);
@@ -104,7 +108,7 @@ export function HabitsGrid() {
   const { editing } = useLayoutEdit();
   const hiddenIds = state.layoutHidden[PAGE] ?? [];
   const toggle = (id: string) => update((st) => { const cur = st.layoutHidden[PAGE] ?? []; return { ...st, layoutHidden: { ...st.layoutHidden, [PAGE]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] } }; });
-  const ALL = ['agua', 'pasos', 'sueno', 'peso', 'cara'];
+  const ALL = ['agua', 'pasos', 'sueno', 'peso', 'cara', 'pelo'];
   const shown = editing ? ALL : ALL.filter((id) => !hiddenIds.includes(id));
   // Con un número impar de cuadros, el último ocupa el ancho completo para que no quede descompensado.
   const tileProps = (id: string) => ({ hidden: hiddenIds.includes(id), editing, onToggle: () => toggle(id), wide: shown.length % 2 === 1 && shown[shown.length - 1] === id });
@@ -178,6 +182,15 @@ export function HabitsGrid() {
               <button className="btn btn-ghost shrink-0 !px-2.5 !py-2" onClick={() => setEditNight(true)} aria-label="Editar rutina de Face Yoga"><Pencil size={14} /></button>
             </div>
           </div>
+        </Tile>}
+
+        {shown.includes('pelo') && <Tile {...tileProps('pelo')} icon={<Scissors size={13} strokeWidth={1.75} className="text-pink-400" />} title="Pelo">
+          <div className="text-sm text-slate-300">
+            {washAgo === null ? 'Aún no has marcado ningún lavado' : washAgo === 0 ? <span className="font-semibold text-emerald-500">Lavado hoy</span> : <><span className="text-2xl font-black tabular-nums text-white">{washAgo}</span><span className="text-xs font-medium text-slate-400"> día{washAgo === 1 ? '' : 's'} sin lavarlo</span></>}
+            {lastWash && washAgo !== 0 && <div className="text-[10px] text-slate-500">Último lavado: {new Date(`${lastWash}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</div>}
+          </div>
+          <DayPick value={hairDay} today={key} label="Día del lavado de pelo" onChange={setHairDay} />
+          <button className={cx('btn !py-1.5 text-xs', hairH.hairWash ? 'btn-ghost' : 'btn-green')} onClick={() => setDay(hairDay, { hairWash: !hairH.hairWash })}>{hairH.hairWash ? (hairDay === key ? 'Quitar lavado de hoy' : 'Quitar ese día') : hairDay === key ? 'Me lo lavé hoy' : 'Marcar lavado ese día'}</button>
         </Tile>}
       </div>
 

@@ -12,7 +12,7 @@ export interface Targets {
 }
 
 /** Ejercicios que por defecto registran también segundos (isométrico) y repeticiones cortas. */
-export const defaultExtras = (exerciseId: string): boolean => /^hip-thrust/.test(exerciseId);
+export const defaultExtras = (exerciseId: string): boolean => /^(hip-thrust|wall-sit)/.test(exerciseId);
 
 /** Abdominales (también los personalizados): se pueden medir por repeticiones o por segundos. */
 export const isCore = (ex?: Exercise): boolean => ex?.muscleGroup === 'Abdominales';
