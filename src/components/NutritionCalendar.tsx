@@ -10,7 +10,7 @@ const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MONTH_FMT = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' });
 const DAY_FMT = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
-/** Calendario de alimentación: cada día se colorea según si llegaste a tu rango de kcal; al tocarlo ves qué comiste y los totales. */
+/** Calendario de alimentación: cada día se colorea según si llegaste a tu objetivo de proteína; al tocarlo ves qué comiste y los totales. */
 export function NutritionCalendar() {
   const { state } = useStore();
   const [cursor, setCursor] = useState(() => {
@@ -29,9 +29,8 @@ export function NutritionCalendar() {
   const tone = (k: string): string => {
     if (!logged.has(k)) return 'text-slate-400';
     const b = dayBalance(state, k);
-    if (b.eaten > b.kcalMax) return 'bg-red-500/25 text-red-300';
-    if (b.eaten >= b.kcalMin) return 'bg-emerald-500/25 text-emerald-300';
-    return 'bg-amber-500/25 text-amber-300';
+    if (b.proteinEaten >= b.proteinTarget) return 'bg-emerald-500/25 text-emerald-300';
+    return b.proteinEaten >= b.proteinTarget * 0.8 ? 'bg-amber-500/25 text-amber-300' : 'bg-red-500/25 text-red-300';
   };
 
   return (
@@ -57,9 +56,9 @@ export function NutritionCalendar() {
         })}
       </div>
       <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
-        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />En tu rango</span>
-        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-500" />Por debajo</span>
-        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />Por encima</span>
+        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />Proteína lograda</span>
+        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-500" />Casi (80 %+)</span>
+        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />Lejos de la proteína</span>
       </div>
       {selected && <DayMeals dayKeyStr={selected} onClose={() => setSelected(null)} />}
     </div>
