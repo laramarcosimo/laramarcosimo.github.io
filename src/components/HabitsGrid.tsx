@@ -59,6 +59,8 @@ export function HabitsGrid() {
   const [faceDay, setFaceDay] = useState(key);
   const [hairDay, setHairDay] = useState(key);
   const [hairCal, setHairCal] = useState(false);
+  const [pelvisRun, setPelvisRun] = useState(false);
+  const [pelvisEdit, setPelvisEdit] = useState(false);
   const setDay = (k: string, p: Partial<HabitDay>) => update((s) => ({ ...s, habits: { ...s.habits, [k]: { ...(s.habits[k] ?? { agua: 0 }), ...p } } }));
   const stepsH: HabitDay = state.habits[stepsDay] ?? { agua: 0 };
   const faceH: HabitDay = state.habits[faceDay] ?? { agua: 0 };
@@ -75,6 +77,8 @@ export function HabitsGrid() {
   const [night, setNight] = useState(false);
   const [editNight, setEditNight] = useState(false);
   const nightRun = resolveNight(state.faceNight);
+  const pelvisRunCfg = resolveNight(state.pelvisNight, new Date(), 'pelvis');
+  const pelvisMin = Math.max(1, Math.round(nightTotal(pelvisRunCfg.steps, pelvisRunCfg.restSec) / 60));
   const nightMin = Math.max(1, Math.round(nightTotal(nightRun.steps, nightRun.restSec) / 60));
   const [editW, setEditW] = useState(false);
   const [w, setW] = useState(0);
@@ -112,7 +116,7 @@ export function HabitsGrid() {
   const { editing } = useLayoutEdit();
   const hiddenIds = state.layoutHidden[PAGE] ?? [];
   const toggle = (id: string) => update((st) => { const cur = st.layoutHidden[PAGE] ?? []; return { ...st, layoutHidden: { ...st.layoutHidden, [PAGE]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] } }; });
-  const ALL = ['agua', 'pasos', 'sueno', 'peso', 'cara', 'pelo'];
+  const ALL = ['agua', 'pasos', 'sueno', 'peso', 'cara', 'pelo', 'pelvis'];
   const shown = editing ? ALL : ALL.filter((id) => !hiddenIds.includes(id));
   // Con un número impar de cuadros, el último ocupa el ancho completo para que no quede descompensado.
   const tileProps = (id: string) => ({ hidden: hiddenIds.includes(id), editing, onToggle: () => toggle(id), wide: shown.length % 2 === 1 && shown[shown.length - 1] === id });
@@ -188,6 +192,15 @@ export function HabitsGrid() {
           </div>
         </Tile>}
 
+
+        {shown.includes('pelvis') && <Tile {...tileProps('pelvis')} icon={<Moon size={13} strokeWidth={1.75} className="text-teal-400" />} title="Pelvis en la cama">
+          <div className="text-sm text-slate-300">{h.pelvis ? <span className="flex items-center gap-1 font-semibold text-emerald-500"><Check size={15} /> Hecho hoy</span> : `Rutina de ${pelvisMin} min mientras lees`}</div>
+          <div className="flex gap-1.5">
+            <button className="btn btn-blue min-w-0 flex-1 !px-2 !py-2 text-xs" onClick={() => setPelvisRun(true)}><Moon size={14} /> Empezar</button>
+            <button className="btn btn-ghost shrink-0 !px-2.5 !py-2" onClick={() => setPelvisEdit(true)} aria-label="Editar rutina de pelvis"><Pencil size={14} /></button>
+          </div>
+          {h.pelvis && <button className="btn btn-ghost !py-1.5 text-xs" onClick={() => set({ pelvis: false })}>Quitar de hoy</button>}
+        </Tile>}
         {shown.includes('pelo') && <Tile {...tileProps('pelo')} icon={<Scissors size={13} strokeWidth={1.75} className="text-pink-400" />} title="Pelo">
           <div className="text-sm text-slate-300">
             {washAgo === null ? 'Aún no has marcado ningún lavado' : washAgo === 0 ? <span className="font-semibold text-emerald-500">Lavado hoy</span> : <><span className="text-2xl font-black tabular-nums text-white">{washAgo}</span><span className="text-xs font-medium text-slate-400"> día{washAgo === 1 ? '' : 's'} sin lavarlo</span></>}
@@ -204,6 +217,8 @@ export function HabitsGrid() {
       </div>
 
       {hairCal && <Modal title="Calendario del pelo" onClose={() => setHairCal(false)}><HabitsCalendar only="pelo" /></Modal>}
+      {pelvisEdit && <FaceNightEditor kind="pelvis" onClose={() => setPelvisEdit(false)} />}
+      {pelvisRun && <FaceYogaNight kind="pelvis" onComplete={() => set({ pelvis: true })} onClose={() => setPelvisRun(false)} />}
       {editNight && <FaceNightEditor onClose={() => setEditNight(false)} />}
       {night && <FaceYogaNight onComplete={() => setDay(faceDay, { faceYoga: true })} onClose={() => setNight(false)} />}
       {supps.length > 0 && (

@@ -1,19 +1,20 @@
 import { ArrowDown, ArrowUp, Camera, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
-import { activeNightCfg, resolveNight, nightTotal, sideSeconds, type FaceNightCfg, type FaceStepCfg } from '../lib/faceYoga';
+import { activeNightCfg, resolveNight, type RoutineKind, nightTotal, sideSeconds, type FaceNightCfg, type FaceStepCfg } from '../lib/faceYoga';
 import { compressToBase64 } from '../lib/image';
 import { useStore } from '../lib/store';
 import { cx, uid } from '../lib/utils';
 import { Modal, NumInput } from './ui';
 
 /** Editor de la rutina de Face Yoga: añadir o quitar ejercicios (con foto), cambiar tiempos y marcar los que van por lados. */
-export function FaceNightEditor({ onClose }: { onClose: () => void }) {
+export function FaceNightEditor({ onClose, kind = 'face' }: { onClose: () => void; kind?: RoutineKind }) {
   const { state, update } = useStore();
-  const cfg: FaceNightCfg = activeNightCfg(state.faceNight);
-  const run = resolveNight(cfg);
+  const field = kind === 'pelvis' ? 'pelvisNight' : 'faceNight';
+  const cfg: FaceNightCfg = activeNightCfg(state[field], new Date(), kind);
+  const run = resolveNight(cfg, new Date(), kind);
   const fileFor = useRef<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const save = (next: FaceNightCfg) => update((s) => ({ ...s, faceNight: next }));
+  const save = (next: FaceNightCfg) => update((s) => ({ ...s, [field]: next }));
   const patch = (id: string, p: Partial<FaceStepCfg>) => save({ ...cfg, steps: cfg.steps.map((k) => (k.id === id ? { ...k, ...p } : k)) });
   const move = (i: number, d: -1 | 1) => {
     const j = i + d;
@@ -35,7 +36,7 @@ export function FaceNightEditor({ onClose }: { onClose: () => void }) {
   const total = nightTotal(run.steps, run.restSec);
 
   return (
-    <Modal title="Editar Face Yoga" onClose={onClose}>
+    <Modal title={kind === 'pelvis' ? 'Editar Pelvis en la cama' : 'Editar Face Yoga'} onClose={onClose}>
       <div className="space-y-3">
         <p className="text-xs text-slate-400">Duración total: {Math.floor(total / 60)} min {total % 60} s. Si un ejercicio va por lados, los segundos son totales y se reparten a mitades.</p>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
@@ -72,7 +73,7 @@ export function FaceNightEditor({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-1.5"><NumInput decimal={false} label="Segundos de descanso" value={cfg.restSec} className="h-9 w-16 rounded-lg bg-slate-900 text-center font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(n) => save({ ...cfg, restSec: n })} /><span className="text-xs text-slate-400">s</span></div>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-ghost flex-1 text-xs" onClick={() => { if (confirm('¿Volver a la rutina original (Rescate cuello y rostro)? Se pierden tus cambios y fotos.')) update((s) => ({ ...s, faceNight: undefined })); }}><RotateCcw size={14} /> Rutina original</button>
+          <button className="btn btn-ghost flex-1 text-xs" onClick={() => { if (confirm('¿Volver a la rutina original? Se pierden tus cambios y fotos.')) update((s) => ({ ...s, [field]: undefined })); }}><RotateCcw size={14} /> Rutina original</button>
           <button className="btn btn-green flex-1" onClick={onClose}>Listo</button>
         </div>
       </div>

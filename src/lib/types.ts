@@ -379,6 +379,8 @@ export interface HabitDay {
   faceYoga?: boolean;
   /** Te lavaste el pelo este día. */
   hairWash?: boolean;
+  /** Hiciste la rutina de pelvis en la cama. */
+  pelvis?: boolean;
   /** Limpieza profunda del cuero cabelludo/pelo ese día (también cuenta como lavado). */
   hairDeep?: boolean;
   /** Suplementos tomados hoy (id → true). */
@@ -482,6 +484,8 @@ export interface Discomfort {
 export interface AppState {
   /** Rutina nocturna de Face Yoga personalizada (ejercicios, tiempos, fotos). */
   faceNight?: import('./faceYoga').FaceNightCfg;
+  /** Rutina «Pelvis en la cama» personalizada. */
+  pelvisNight?: import('./faceYoga').FaceNightCfg;
   discomfort: Discomfort[];
   /** Enlaces de vídeo de demostración elegidos por ti (clave = ejercicio o paso del calentamiento). */
   demoLinks: Record<string, string>;

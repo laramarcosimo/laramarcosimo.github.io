@@ -1,6 +1,6 @@
 import { ChevronDown, ExternalLink, Moon, Pause, Play, SkipBack, SkipForward, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NIGHT_INFO, REGLA_ORO, nightTotal, resolveNight, sideSeconds, type NightStep } from '../lib/faceYoga';
+import { NIGHT_INFO, PELVIS_INFO, PELVIS_RULE, REGLA_ORO, nightTotal, resolveNight, sideSeconds, type NightStep, type RoutineKind } from '../lib/faceYoga';
 import { useStore } from '../lib/store';
 import { BUZZ, vibrate } from '../lib/feedback';
 import { useScrollLock } from '../lib/scrollLock';
@@ -34,10 +34,10 @@ const C = 2 * Math.PI * R;
  * Face Yoga nocturno guiado: 7 ejercicios de 60 s con 5 s de «prepárate» entre uno y otro, controles
  * Anterior / Pausar / Siguiente y avisos de vibración y sonido en cada cambio.
  */
-export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void; onClose: () => void }) {
+export function FaceYogaNight({ onComplete, onClose, kind = 'face' }: { onComplete: () => void; onClose: () => void; kind?: RoutineKind }) {
   const sound = useSoundAlert();
   const { state } = useStore();
-  const { steps, restSec } = useMemo(() => resolveNight(state.faceNight), [state.faceNight]);
+  const { steps, restSec } = useMemo(() => resolveNight(kind === 'pelvis' ? state.pelvisNight : state.faceNight, new Date(), kind), [state.faceNight, state.pelvisNight, kind]);
   const [i, setI] = useState(0);
   const [phase, setPhase] = useState<Phase>('ready');
   const [running, setRunning] = useState(false);
@@ -166,7 +166,7 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
   return (
     <div className="night-screen fixed inset-0 z-[80] flex flex-col" style={{ background: 'linear-gradient(180deg,#0A0F1D 0%,#141C33 55%,#1E293B 100%)', paddingTop: 'env(safe-area-inset-top)' }} role="dialog" aria-label="Face Yoga nocturno">
       <div className="flex shrink-0 items-center justify-between px-5 pt-4">
-        <span className="flex items-center gap-2 text-sm font-semibold" style={soft}><Moon size={16} /> Face Yoga · {Math.max(1, Math.round(nightTotal(steps, restSec) / 60))} min</span>
+        <span className="flex items-center gap-2 text-sm font-semibold" style={soft}><Moon size={16} /> {kind === 'pelvis' ? 'Pelvis en la cama' : 'Face Yoga'} · {Math.max(1, Math.round(nightTotal(steps, restSec) / 60))} min</span>
         <button className="rounded-full bg-white/10 p-2 text-white" onClick={onClose} aria-label="Salir"><X size={18} /></button>
       </div>
 
@@ -189,8 +189,8 @@ export function FaceYogaNight({ onComplete, onClose }: { onComplete: () => void;
                 <li key={s.id} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm text-white"><span className="w-5 text-center font-bold text-emerald-300">{k + 1}</span><span className="min-w-0 flex-1 truncate">{s.title}</span><span className="shrink-0 text-[11px]" style={soft}>{s.position}</span></li>
               ))}
             </ol>
-            <p className="mt-4 rounded-2xl bg-emerald-500/15 p-3 text-xs font-semibold leading-relaxed text-emerald-200">{REGLA_ORO}</p>
-            <p className="mt-3 rounded-2xl bg-white/5 p-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,.7)' }}>{NIGHT_INFO}</p>
+            <p className="mt-4 rounded-2xl bg-emerald-500/15 p-3 text-xs font-semibold leading-relaxed text-emerald-200">{kind === 'pelvis' ? PELVIS_RULE : REGLA_ORO}</p>
+            <p className="mt-3 rounded-2xl bg-white/5 p-3 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,.7)' }}>{kind === 'pelvis' ? PELVIS_INFO : NIGHT_INFO}</p>
           </div>
         )}
 

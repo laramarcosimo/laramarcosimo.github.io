@@ -40,7 +40,18 @@ const palm = (x: number, y: number, r: number): string => `<g transform="transla
 
 const bed = (head: string): string => `<rect y="150" width="240" height="90" fill="#cfd8e3"/><rect x="0" y="146" width="240" height="14" rx="6" fill="#f8fafc" stroke="#cbd5e1"/><rect x="0" y="160" width="240" height="80" fill="#9fb3c8"/>${head}`;
 
+const limb = (pts: string, w: number, c: string): string => `<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const SK = '#e8b998';
+const LEG = '#5b6b82';
+const TOP = '#cbd5e1';
+const lying = (torso: string, legs: string, extra = ''): string => bed(`<circle cx="30" cy="132" r="14" fill="url(#sk)" stroke="#c99476"/><path d="M18 124Q30 112 44 124Q34 120 18 128Z" fill="#4a2f22"/>${limb(torso, 22, TOP)}${legs}${extra}`);
+
 const ART: Record<string, string> = {
+  bascula: lying('46,138 118,138', limb('118,138 158,98', 16, LEG) + limb('158,98 188,142', 14, LEG), arrow(86, 118, 86, 134) + `<path d="M104 118Q124 104 140 118" fill="none" stroke="${T}" stroke-width="3" stroke-dasharray="4 3"/>`),
+  respiracion: lying('46,138 118,138', limb('118,138 150,100', 16, LEG) + limb('150,100 196,100', 14, LEG), arrow(70, 126, 70, 106) + arrow(96, 106, 96, 126) + `<rect x="150" y="90" width="52" height="10" rx="5" fill="#f8fafc" stroke="#cbd5e1"/>`),
+  puente: lying('46,138 118,108', limb('118,108 158,98', 16, LEG) + limb('158,98 182,142', 14, LEG), arrow(112, 140, 112, 118)),
+  flexores: lying('46,138 118,138', limb('118,138 150,96', 16, LEG) + limb('150,96 128,92', 14, LEG) + limb('118,138 196,166', 16, LEG), arrow(176, 150, 176, 176)),
+  deadbug: lying('46,138 118,138', limb('62,136 62,92', 12, SK) + limb('118,138 118,98', 16, LEG) + limb('118,98 156,98', 14, LEG), arrow(164, 90, 196, 126)),
   frente: face + zig(88, 50, 64) + zig(88, 58, 64) + arrow(120, 46, 120, 12) + gua(120, 40, -90),
   entrecejo: face + finger(66, 70, 160, 20) + arrow(118, 70, 84, 46) + gua(112, 66, 40),
   ocular: face + finger(94, 64, 175, 18) + finger(146, 64, 185, 18) + `<ellipse cx="100" cy="90" rx="14" ry="9" fill="none" stroke="${T}" stroke-width="3" stroke-dasharray="4 3"/><ellipse cx="140" cy="90" rx="14" ry="9" fill="none" stroke="${T}" stroke-width="3" stroke-dasharray="4 3"/>`,

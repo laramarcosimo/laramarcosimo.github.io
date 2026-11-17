@@ -140,7 +140,21 @@ const RESCATE_DEF: [NightStep, number][] = [
   [R('r12', 'Extensión cervical', 'Cama', 'Tumbada boca abajo en la cama, eleva suavemente el pecho y relaja hombros para corregir la postura que provoca las arrugas.', 'prone neck extension exercise posture', 'extension', 'Boca abajo'), 30],
 ];
 export const RESCATE: NightStep[] = RESCATE_DEF.map(([s]) => s);
-const ALL = (date: Date): NightStep[] => [...RESCATE, OCULAR, FRONTAL, ...nightSteps(date)];
+export type RoutineKind = 'face' | 'pelvis';
+
+export const PELVIS_INFO = 'Ejercicios para hacer en la cama mientras lees (o antes de dormir). Enseñan a sentir y controlar la pelvis y fortalecen glúteos y abdomen profundo. Ayudan a la postura, pero no queman grasa de la barriga baja ni corrigen por sí solos la forma de caminar: combínalos con fuerza de glúteos y caminar atenta a la pelvis.';
+export const PELVIS_RULE = 'Truco: la lumbar debe quedar pegada al colchón, sin arquear. Respira con calma y no aguantes el aire.';
+const P = (id: string, title: string, how: string, q: string, art: string, halves?: [string, string]): NightStep => ({
+  id, title, tool: 'Cama', position: 'Boca arriba', focus: 'Pelvis y abdomen profundo', how, image: faceArt(art), url: yt(q), halves,
+});
+const PELVIS_DEF: [NightStep, number][] = [
+  [P('pv1', 'Báscula pélvica', 'Boca arriba con las rodillas dobladas, aplana la zona lumbar contra el colchón llevando el ombligo hacia dentro y el pubis hacia el ombligo. Aguanta 5 s, suelta y repite despacio (10-15 veces).', 'posterior pelvic tilt exercise lying down', 'bascula'), 60],
+  [P('pv2', 'Respiración 90/90', 'Boca arriba con las piernas dobladas sobre una almohada. Inspira por la nariz y suelta el aire muy despacio por la boca hasta vaciar las costillas, con la lumbar pegada al colchón.', '90 90 breathing exercise diaphragm pelvis', 'respiracion'), 60],
+  [P('pv3', 'Puente de glúteo', 'Boca arriba con las rodillas dobladas, sube la cadera apretando los glúteos sin arquear la lumbar. Aguanta 3 s arriba y baja despacio.', 'glute bridge proper form', 'puente'), 60],
+  [P('pv4', 'Estiramiento de flexores de cadera', 'En el borde de la cama, abraza una rodilla al pecho y deja la otra pierna colgando, relajada. Notarás el estiramiento en la parte delantera de la cadera de la pierna que cuelga.', 'thomas stretch hip flexor lying edge of bed', 'flexores', ['Pierna derecha colgando', 'Pierna izquierda colgando']), 60],
+  [P('pv5', 'Dead bug lento', 'Boca arriba, brazos al techo y rodillas a 90°. Baja un talón hacia el colchón sin que la lumbar se despegue y vuelve; alterna las piernas despacio.', 'dead bug exercise form', 'deadbug'), 60],
+];
+const ALL = (date: Date): NightStep[] => [...RESCATE, ...PELVIS_DEF.map(([s]) => s), OCULAR, FRONTAL, ...nightSteps(date)];
 
 /** Duración total (rutina antigua): 7 ejercicios de 60 s y 6 pausas de 5 s. */
 export const NIGHT_TOTAL_SECONDS = 7 * WORK_SECONDS + 6 * REST_SECONDS;
@@ -167,18 +181,22 @@ export interface FaceNightCfg {
 }
 export type RunStep = NightStep & { seconds: number };
 
-export const defaultNightCfg = (_date: Date = new Date()): FaceNightCfg => ({
+export const defaultNightCfg = (_date: Date = new Date(), kind: RoutineKind = 'face'): FaceNightCfg => kind === 'pelvis' ? ({
+  v: 1,
+  restSec: 5,
+  steps: PELVIS_DEF.map(([s, sec]) => ({ id: s.id, seconds: sec, sides: !!s.halves })),
+}) : ({
   v: 2,
   restSec: 0,
   steps: RESCATE_DEF.map(([s, sec]) => ({ id: s.id, seconds: sec, sides: !!s.halves })),
 });
 
 /** Config activa: una guardada con la rutina antigua se sustituye por la de Rescate. */
-export const activeNightCfg = (cfg: FaceNightCfg | undefined, date: Date = new Date()): FaceNightCfg => (cfg && cfg.v === 2 ? cfg : defaultNightCfg(date));
+export const activeNightCfg = (cfg: FaceNightCfg | undefined, date: Date = new Date(), kind: RoutineKind = 'face'): FaceNightCfg => (cfg && cfg.v === (kind === 'pelvis' ? 1 : 2) ? cfg : defaultNightCfg(date, kind));
 
 /** Aplica tu personalización a la biblioteca. Sin personalizar, es la rutina de siempre. */
-export const resolveNight = (cfg: FaceNightCfg | undefined, date: Date = new Date()): { steps: RunStep[]; restSec: number } => {
-  const c = activeNightCfg(cfg, date);
+export const resolveNight = (cfg: FaceNightCfg | undefined, date: Date = new Date(), kind: RoutineKind = 'face'): { steps: RunStep[]; restSec: number } => {
+  const c = activeNightCfg(cfg, date, kind);
   const lib = new Map<string, NightStep>(ALL(date).map((s) => [s.id, s]));
   const steps = c.steps.map((k): RunStep => {
     const base = lib.get(k.id);
