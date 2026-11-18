@@ -63,6 +63,8 @@ const toLogSets = (sets: SetLog[]) => sets.filter((s) => s.completed).map((s) =>
 
 export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; onRest: (seconds?: number) => void; onBack: () => void }) {
   const { state, update } = useStore();
+  /** Nota del ejercicio: la que escribes se guarda para siempre y sale en todos los entrenos. */
+  const noteOf = (we: { exerciseId: string; notes?: string }): string | undefined => state.exerciseNotes?.[we.exerciseId] ?? we.notes;
   const sound = useSoundAlert();
   const [coachOpen, setCoachOpen] = useState(false);
   const [plates, setPlates] = useState<{ weId: string; kg: number } | null>(null);
@@ -342,7 +344,7 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
             )}
             <ExerciseTargets exerciseId={we.exerciseId} exercise={ex} value={we} onChange={(p) => patchEx(we.id, (x) => (p.byTime === undefined || p.byTime === byTimeOf(x, ex) ? { ...x, ...p } : { ...x, ...p, sets: x.sets.map((q) => (q.completed ? q : p.byTime ? { ...q, secs: q.reps || q.secs, reps: 0 } : { ...q, reps: q.secs || q.reps, secs: undefined })) }))} />
             <div className="mt-2 flex items-center gap-2">
-              <input className="min-w-0 flex-1 rounded-lg bg-transparent px-1 py-2 text-xs text-slate-400 outline-none placeholder:text-slate-500" placeholder="Agregar notas aquí..." value={we.notes ?? ''} onChange={(e) => patchEx(we.id, (x) => ({ ...x, notes: e.target.value }))} aria-label="Notas del ejercicio" />
+              <input className="min-w-0 flex-1 rounded-lg bg-transparent px-1 py-2 text-xs text-slate-400 outline-none placeholder:text-slate-500" placeholder="Notas del ejercicio (se guardan siempre)..." value={noteOf(we) ?? ''} onChange={(e) => { const v = e.target.value; patchEx(we.id, (x) => ({ ...x, notes: v })); update((st) => ({ ...st, exerciseNotes: { ...(st.exerciseNotes ?? {}), [we.exerciseId]: v } })); }} aria-label="Notas del ejercicio (se guardan para siempre)" />
               <div className="flex shrink-0 gap-1.5">
                 {ex?.instructions && <button className={cx('flex h-9 w-9 items-center justify-center rounded-lg active:scale-95', howOpen.includes(we.id) ? 'bg-accent text-white' : 'bg-slate-800 text-slate-300')} onClick={() => setHowOpen((l) => (l.includes(we.id) ? l.filter((x) => x !== we.id) : [...l, we.id]))} aria-label="Cómo hacerlo" title="Cómo hacerlo"><Info size={17} /></button>}
                 <button className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-slate-300 active:scale-95" onClick={() => setDemoFor(we.exerciseId)} aria-label="Ver técnica" title="Ver técnica"><PlayCircle size={17} /></button>
@@ -408,7 +410,7 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
               <>
             {(() => {
               const tplNotes = workout.templateId ? state.templates.find((t) => t.id === workout.templateId)?.exercises.find((x) => x.exerciseId === we.exerciseId)?.notes : undefined;
-              const pg = analyzeProgression(state.workouts, we.exerciseId, ex?.name ?? 'Ejercicio', rangeNotes({ repMin: we.repMin, repMax: we.repMax, notes: we.notes || tplNotes }), weightStep(ex), workout.templateId, deloadActive(state.settings.deloadUntil), ex?.equipment === 'Máquina');
+              const pg = analyzeProgression(state.workouts, we.exerciseId, ex?.name ?? 'Ejercicio', rangeNotes({ repMin: we.repMin, repMax: we.repMax, notes: noteOf(we) || tplNotes }), weightStep(ex), workout.templateId, deloadActive(state.settings.deloadUntil), ex?.equipment === 'Máquina');
               if (!pg || we.sets.some((x) => x.completed)) return null;
               const empty = we.sets.filter((s) => s.type !== 'warmup' && !s.completed && s.weight === 0 && s.reps === 0);
               if (pg.kind === 'lower') return (
@@ -433,7 +435,7 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
               const sg = suggestNext(state.workouts, we.exerciseId, period, ['Cuádriceps', 'Isquios', 'Glúteos', 'Gemelos'].includes(ex?.muscleGroup ?? ''), deloadActive(state.settings.deloadUntil), homeCap(ex, workout.location ?? 'gym', state.homeSpecs), weightStep(ex), workout.templateId);
               const empty = we.sets.filter((s) => s.type !== 'warmup' && !s.completed && s.weight === 0 && s.reps === 0);
               if (!sg || empty.length === 0) return null;
-              const pk = analyzeProgression(state.workouts, we.exerciseId, ex?.name ?? 'Ejercicio', we.notes, weightStep(ex), workout.templateId, deloadActive(state.settings.deloadUntil))?.kind;
+              const pk = analyzeProgression(state.workouts, we.exerciseId, ex?.name ?? 'Ejercicio', noteOf(we), weightStep(ex), workout.templateId, deloadActive(state.settings.deloadUntil))?.kind;
               if (pk === 'raise' || pk === 'lower') return null;
               return (
                 <button className="mt-2 flex w-full items-center justify-between rounded-lg bg-accent/15 px-3 py-2 text-xs font-semibold text-accent active:scale-95" onClick={() => patchEx(we.id, (e) => ({ ...e, sets: e.sets.map((s) => (s.type !== 'warmup' && !s.completed && s.weight === 0 && s.reps === 0 ? { ...s, weight: sg.weight, reps: sg.reps } : s)) }))}>
@@ -444,7 +446,7 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
             {(() => {
               // Durante la sesión: si las series ya hechas no se sostuvieron (menos reps que el mínimo o «al límite»), se sugiere bajar para las que faltan.
               const tplNotes = workout.templateId ? state.templates.find((t) => t.id === workout.templateId)?.exercises.find((x) => x.exerciseId === we.exerciseId)?.notes : undefined;
-              const [lo] = repRange(rangeNotes({ repMin: we.repMin, repMax: we.repMax, notes: we.notes || tplNotes }));
+              const [lo] = repRange(rangeNotes({ repMin: we.repMin, repMax: we.repMax, notes: noteOf(we) || tplNotes }));
               const doneSets = we.sets.filter((x) => x.completed && x.type !== 'warmup');
               const bad = struggledSets(doneSets, lo);
               const remaining = we.sets.filter((s) => s.type !== 'warmup' && !s.completed);
@@ -590,6 +592,8 @@ export function Logger({ workout, onRest, onBack }: { workout: ActiveWorkout; on
 
 function FinishModal({ workout, onClose }: { workout: ActiveWorkout; onClose: () => void }) {
   const { state, update } = useStore();
+  /** Nota del ejercicio: la que escribes se guarda para siempre y sale en todos los entrenos. */
+  const noteOf = (we: { exerciseId: string; notes?: string }): string | undefined => state.exerciseNotes?.[we.exerciseId] ?? we.notes;
   const [saveTpl, setSaveTpl] = useState(false);
   const [night, setNight] = useState(false);
   const [endedAt] = useState(() => Date.now());
@@ -598,7 +602,7 @@ function FinishModal({ workout, onClose }: { workout: ActiveWorkout; onClose: ()
     const exercises: LogExercise[] = workout.exercises
       .map((we) => {
         const ex = state.exercises.find((e) => e.id === we.exerciseId);
-        return { exerciseId: we.exerciseId, name: ex?.name ?? 'Ejercicio', muscleGroup: ex?.muscleGroup ?? 'Abdominales', notes: we.notes || undefined, extra: we.extra || undefined, perHand: perHandOf(we, ex) || undefined, sets: toLogSets(we.sets) };
+        return { exerciseId: we.exerciseId, name: ex?.name ?? 'Ejercicio', muscleGroup: ex?.muscleGroup ?? 'Abdominales', notes: noteOf(we) || undefined, extra: we.extra || undefined, perHand: perHandOf(we, ex) || undefined, sets: toLogSets(we.sets) };
       })
       .filter((e) => e.sets.length > 0);
     const durationSeconds = Math.max(60, Math.round((endedAt - workout.startedAt) / 1000));
@@ -644,7 +648,7 @@ function FinishModal({ workout, onClose }: { workout: ActiveWorkout; onClose: ()
         return done.length ? { ...e, personalRecords: updateRecords(e.personalRecords, done) } : e;
       }),
       templates: saveTpl
-        ? [...s.templates, { id: uid(), title: log.title, exercises: workout.exercises.filter((we) => !we.extra).map((we) => ({ exerciseId: we.exerciseId, unilateral: we.unilateral, superset: we.superset, restSec: we.restSec, repMin: we.repMin, repMax: we.repMax, extras: we.extras, byTime: byTimeOf(we, s.exercises.find((q) => q.id === we.exerciseId)) || undefined, perHand: we.perHand, notes: we.notes, sets: we.sets.map((x) => ({ type: x.type, weight: x.weight, reps: byTimeOf(we, s.exercises.find((q) => q.id === we.exerciseId)) ? x.secs ?? x.reps : x.reps, side: x.side, secs: x.secs, partials: x.partials })) })) }]
+        ? [...s.templates, { id: uid(), title: log.title, exercises: workout.exercises.filter((we) => !we.extra).map((we) => ({ exerciseId: we.exerciseId, unilateral: we.unilateral, superset: we.superset, restSec: we.restSec, repMin: we.repMin, repMax: we.repMax, extras: we.extras, byTime: byTimeOf(we, s.exercises.find((q) => q.id === we.exerciseId)) || undefined, perHand: we.perHand, notes: noteOf(we), sets: we.sets.map((x) => ({ type: x.type, weight: x.weight, reps: byTimeOf(we, s.exercises.find((q) => q.id === we.exerciseId)) ? x.secs ?? x.reps : x.reps, side: x.side, secs: x.secs, partials: x.partials })) })) }]
         : s.templates,
     }));
     onClose();

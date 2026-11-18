@@ -485,6 +485,8 @@ export interface AppState {
   /** Rutina nocturna de Face Yoga personalizada (ejercicios, tiempos, fotos). */
   faceNight?: import('./faceYoga').FaceNightCfg;
   /** Rutina «Pelvis en la cama» personalizada. */
+  /** Notas fijas por ejercicio (id → texto): se ven siempre al entrenarlo. */
+  exerciseNotes?: Record<string, string>;
   pelvisNight?: import('./faceYoga').FaceNightCfg;
   discomfort: Discomfort[];
   /** Enlaces de vídeo de demostración elegidos por ti (clave = ejercicio o paso del calentamiento). */
