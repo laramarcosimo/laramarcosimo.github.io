@@ -266,6 +266,7 @@ export function BarcodeScanner({ slot, onClose }: { slot?: Slot; onClose: () => 
             <button className="btn btn-blue" onClick={() => { remember(); removeWithUndo('Añadido a la despensa', (s) => ({ ...s, pantry: addToPantry(s.pantry, [{ name: prod.name, store: state.defaultSupermarket || undefined, expires: expires || undefined, unitGrams: prod.pack || undefined, portionG: prod.serving || undefined }]), productImages: prod.image ? { ...s.productImages, [productKey(prod.name)]: prod.image } : s.productImages })); setAdded('Añadido a la despensa'); }}>A la despensa</button>
             <button className="btn btn-green" disabled={grams <= 0} onClick={() => { remember(); removeWithUndo('Anotado en el diario', (s) => logTemplate(s, { name: `${label} ${grams} g`, calorias: f(prod.kcal), proteinas: f(prod.protein), carbs: f(prod.carbs), grasas: f(prod.fat), ingredientes: [] }, false, slot ?? inferSlot(Date.now()))); setAdded('Registrado en el diario'); }}>Al diario</button>
           </div>
+          <button className="btn btn-ghost w-full text-xs" onClick={() => { remember(); setAdded('Guardado en tus alimentos'); }}>Solo guardar en mis alimentos</button>
           <p className="text-[11px] text-slate-500">Al añadirlo se guardan sus valores: la próxima vez que escribas este alimento a mano se usarán los tuyos.</p>
           {added && (
             <div className="flex items-center gap-2 text-sm text-fuel">
