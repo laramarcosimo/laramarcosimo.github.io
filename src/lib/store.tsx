@@ -190,8 +190,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Tus productos escaneados (etiquetas) pasan a la tabla de alimentos y mandan sobre los valores genéricos.
   useEffect(() => {
-    setExtraFoods(state.products ?? []);
-  }, [state.products]);
+    setExtraFoods(state.products ?? [], state.foodUnits);
+  }, [state.products, state.foodUnits]);
 
   useEffect(() => {
     if (first.current) {

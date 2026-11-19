@@ -279,10 +279,24 @@ export const FOODS: FoodRow[] = RAW.trim()
 
 /** Productos propios (escaneados o de tu foto de la tabla): se suman a la tabla y, a igual nombre, mandan ellos. */
 let EXTRA: FoodRow[] = [];
-export const setExtraFoods = (products: { name: string; kcal: number; protein: number; carbs: number; fat: number; fiber: number; serving?: number; pack?: number; source?: string }[]): void => {
+let OVR: FoodRow[] = [];
+const UNIT_FIELD = { unidad: 'u', loncha: 'l', cucharada: 'cs', cucharadita: 'ct', rebanada: 'r', 'puñado': 'pu' } as const;
+const withUnitMap = (f: FoodRow, m: Record<string, number> | undefined): FoodRow => {
+  if (!m) return f;
+  const o = { ...f };
+  for (const [k, field] of Object.entries(UNIT_FIELD)) if (m[k] > 0) o[field] = m[k];
+  return o;
+};
+
+export const setExtraFoods = (products: { id?: string; name: string; kcal: number; protein: number; carbs: number; fat: number; fiber: number; serving?: number; pack?: number; source?: string }[], units?: Record<string, Record<string, number>>): void => {
+  // Medidas corregidas a mano de alimentos de la tabla («1 loncha de jamón = 12 g»): mandan sobre las de serie.
+  OVR = Object.entries(units ?? {}).flatMap(([id, m]) => {
+    const base = id.startsWith('b:') ? FOODS.find((f) => f.keys[0] === id.slice(2)) : undefined;
+    return base ? [withUnitMap(base, m)] : [];
+  });
   EXTRA = products
     .filter((p) => p.source !== 'auto' && p.name.trim() && p.kcal >= 0)
-    .map((p) => ({ keys: [norm(p.name.replace(/\(.*?\)/g, ' ')).replace(/\s+/g, ' ').trim()], kcal: p.kcal, protein: p.protein, carbs: p.carbs, fat: p.fat, fiber: p.fiber, u: p.pack || p.serving || 0, l: 0, cs: 0, ct: 0, r: 0, pu: 0, meat: false }))
+    .map((p) => withUnitMap({ keys: [norm(p.name.replace(/\(.*?\)/g, ' ')).replace(/\s+/g, ' ').trim()], kcal: p.kcal, protein: p.protein, carbs: p.carbs, fat: p.fat, fiber: p.fiber, u: p.pack || p.serving || 0, l: 0, cs: 0, ct: 0, r: 0, pu: 0, meat: false }, p.id ? units?.[`s:${p.id}`] : undefined))
     .filter((f) => f.keys[0].length >= 3);
 };
 
@@ -292,7 +306,7 @@ export const lookupFood = (text: string): FoodRow | null => {
   const tt = ` ${norm(text)} `;
   let best: FoodRow | null = null;
   let bestLen = 0;
-  for (const f of [...EXTRA, ...FOODS]) {
+  for (const f of [...EXTRA, ...OVR, ...FOODS]) {
     const k = f.keys[0];
     const ks = k.replace(/\b(\w+?)(es|s)\b/g, (m, a) => (a.length >= 3 ? a : m));
     if ((tt.includes(` ${k} `) || tt.includes(` ${k}s `) || tt.includes(` ${k}es `) || t.includes(` ${ks} `)) && k.length > bestLen) {
@@ -308,7 +322,7 @@ const RAW_WORD = /\b(crudo|cruda|crudos|crudas|seco|seca|secos|secas)\b/;
 /** Versión «en crudo / seco» de un alimento cuando la tabla la tiene (arroz, pasta, legumbres, quinoa, cuscús). */
 const rawVariant = (food: FoodRow): FoodRow | undefined => {
   const k = `${food.keys[0]} crudo`;
-  return [...EXTRA, ...FOODS].find((f) => f.keys[0] === k);
+  return [...EXTRA, ...OVR, ...FOODS].find((f) => f.keys[0] === k);
 };
 
 /** true si el alimento cambia mucho entre crudo y cocinado y la tabla sabe las dos cosas: carne y pescado, arroz, pasta, legumbres… */

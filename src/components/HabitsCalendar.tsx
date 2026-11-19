@@ -1,3 +1,4 @@
+import { treadmillSteps } from '../lib/treadmillSteps';
 import { ChevronLeft, ChevronRight, Footprints, Moon, Scissors, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useStore } from '../lib/store';
@@ -46,8 +47,8 @@ export function HabitsCalendar({ only }: { only?: Mode } = {}) {
 
   const val = (k: string): number => {
     const h = habit(k);
-    if (!h) return 0;
-    return mode === 'pasos' ? h.steps ?? 0 : mode === 'sueno' ? h.sleepHours ?? 0 : mode === 'pelo' ? (h.hairDeep ? 2 : h.hairWash ? 1 : 0) : h.faceYoga ? 1 : 0;
+    if (!h) return mode === 'pasos' ? treadmillSteps(state, k) : 0;
+    return mode === 'pasos' ? (h.steps ?? 0) + treadmillSteps(state, k) : mode === 'sueno' ? h.sleepHours ?? 0 : mode === 'pelo' ? (h.hairDeep ? 2 : h.hairWash ? 1 : 0) : h.faceYoga ? 1 : 0;
   };
   const tone = (k: string): string => {
     const v = val(k);
@@ -133,7 +134,7 @@ function DayHabits({ dayKeyStr, stepGoal, onClose }: { dayKeyStr: string; stepGo
   const h = state.habits[dayKeyStr];
   const [y, m, d] = dayKeyStr.split('-').map(Number);
   const title = DAY_FMT.format(new Date(y, m - 1, d, 12)).replace(/^./, (c) => c.toUpperCase());
-  const steps = h?.steps ?? 0;
+  const steps = (h?.steps ?? 0) + treadmillSteps(state, dayKeyStr);
   const sleep = h?.sleepHours ?? 0;
   const rows: [React.ReactNode, string, string][] = [
     [<Footprints key="s" size={16} />, 'Pasos', steps > 0 ? `${fmtSteps(steps)}${stepGoal ? ` de ${fmtSteps(stepGoal)}` : ''}` : 'Sin datos'],

@@ -1,5 +1,5 @@
 import { Blocks } from '../components/Blocks';
-import { AlertCircle, CalendarDays, Camera, Image as ImageIcon, Refrigerator, ScanBarcode, ShoppingCart, type LucideIcon, ChefHat, Clock, Utensils } from 'lucide-react';
+import { AlertCircle, CalendarDays, Camera, Image as ImageIcon, Refrigerator, ScanBarcode, Search, ShoppingCart, type LucideIcon, ChefHat, Clock, Utensils } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefaultStore } from '../components/DefaultStore';
 import { BarcodeScanner } from '../components/BarcodeScanner';
@@ -7,6 +7,7 @@ import { WeekMenu } from '../components/WeekMenu';
 import { ShoppingList } from '../components/ShoppingList';
 import { UtensilChips } from '../components/UtensilChips';
 import { recipeContext } from '../lib/coach';
+import { FoodCatalog } from '../components/FoodCatalog';
 import { PantryInventory } from '../components/PantryInventory';
 import { ErrorBox, Spinner, Title } from '../components/ui';
 import { storeList } from '../lib/stores';
@@ -40,14 +41,16 @@ const loadRecipes = (sig: string): Recipe[] => {
   }
 };
 
-type Sub = 'inventario' | 'menu' | 'compra';
+type Sub = 'inventario' | 'alimentos' | 'menu' | 'compra';
 const SUBS: { id: Sub; label: string; Icon: LucideIcon }[] = [
   { id: 'inventario', label: 'Inventario', Icon: Refrigerator },
+  { id: 'alimentos', label: 'Alimentos', Icon: Search },
   { id: 'menu', label: 'Menú y recetas', Icon: ChefHat },
   { id: 'compra', label: 'Compra y utensilios', Icon: ShoppingCart },
 ];
 const GROUPS: Record<Sub, string[]> = {
   inventario: ['caduca', 'inventario', 'escaner'],
+  alimentos: ['catalogo'],
   menu: ['menu', 'recetas'],
   compra: ['compra', 'utensilios'],
 };
@@ -60,7 +63,7 @@ export default function Pantry() {
   const [sub, setSub] = useState<Sub>(() => {
     try {
       const v = localStorage.getItem('apex-pantry-sub');
-      return v === 'menu' || v === 'compra' ? v : 'inventario';
+      return v === 'menu' || v === 'compra' || v === 'alimentos' ? v : 'inventario';
     } catch {
       return 'inventario';
     }
@@ -136,7 +139,7 @@ export default function Pantry() {
   return (
     <div className="space-y-4">
       <Title sub="Inventario y recetas ajustadas a tu día">Despensa</Title>
-      <div role="tablist" className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-800 p-1">
+      <div role="tablist" className="grid grid-cols-4 gap-1 rounded-2xl bg-slate-800 p-1">
         {SUBS.map(({ id, label, Icon }) => (
           <button key={id} role="tab" aria-selected={sub === id} onClick={() => pick(id)} className={cx('flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition', sub === id ? 'bg-slate-900 text-accent shadow' : 'text-slate-400')}>
             <Icon size={18} strokeWidth={sub === id ? 2 : 1.5} />
@@ -187,6 +190,7 @@ export default function Pantry() {
             </>
           ),
           inventario: <PantryInventory onBarcode={() => setBarcode(true)} soon={soon} setSoon={setSoon} />,
+          catalogo: <FoodCatalog />,
           menu: (<div className="space-y-3"><h3 className="flex items-center gap-2 font-bold text-white"><CalendarDays size={16} strokeWidth={1.75} /> Menú de la semana</h3><WeekMenu /></div>),
           compra: <ShoppingList />,
           utensilios: (

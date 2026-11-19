@@ -5,7 +5,7 @@ import { looseMatch, uid } from './utils';
 export const saveProduct = (s: AppState, p: Omit<SavedProduct, 'id' | 'usedAt'> & { id?: string }): AppState => {
   const list = s.products ?? [];
   const same = list.find((x) => (p.code && x.code === p.code) || (x.name.toLowerCase() === p.name.toLowerCase() && (x.brand ?? '') === (p.brand ?? '')));
-  const next: SavedProduct = { ...same, ...p, id: same?.id ?? uid(), usedAt: Date.now() };
+  const next: SavedProduct = { ...same, ...p, id: same?.id ?? p.id ?? uid(), usedAt: Date.now() };
   return { ...s, products: same ? list.map((x) => (x.id === same.id ? next : x)) : [...list, next] };
 };
 

@@ -63,8 +63,8 @@ function AppShell() {
 
   // Tus productos guardados (escaneados o de tu foto de la tabla) se suman a la tabla de composición.
   useEffect(() => {
-    setExtraFoods(state.products ?? []);
-  }, [state.products]);
+    setExtraFoods(state.products ?? [], state.foodUnits);
+  }, [state.products, state.foodUnits]);
 
   // Deep link de Atajos de iOS: /?logSleep=HORAS&logSteps=PASOS&date=AAAA-MM-DD
   useEffect(() => {

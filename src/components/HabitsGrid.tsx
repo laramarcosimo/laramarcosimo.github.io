@@ -15,6 +15,7 @@ import { applySleepEvents, pullSleepEvents } from '../lib/sleepCloud';
 import { applyStepsEvents, pullStepsEvents } from '../lib/stepsCloud';
 import { SleepCalc } from './SleepCalc';
 import { MissingStepsNotice } from './MissingStepsNotice';
+import { treadmillKm, treadmillSteps } from '../lib/treadmillSteps';
 
 const clamp = (n: number, a: number, b: number): number => Math.min(b, Math.max(a, n));
 const fmtHM = (h: number): string => {
@@ -64,7 +65,10 @@ export function HabitsGrid() {
   const setDay = (k: string, p: Partial<HabitDay>) => update((s) => ({ ...s, habits: { ...s.habits, [k]: { ...(s.habits[k] ?? { agua: 0 }), ...p } } }));
   const stepsH: HabitDay = state.habits[stepsDay] ?? { agua: 0 };
   const faceH: HabitDay = state.habits[faceDay] ?? { agua: 0 };
-  const steps = stepsH.steps ?? 0;
+  const phoneSteps = stepsH.steps ?? 0;
+  const beltSteps = treadmillSteps(state, stepsDay);
+  const beltKm = treadmillKm(state, stepsDay);
+  const steps = phoneSteps + beltSteps;
   const stepGoal = state.settings.stepGoal && state.settings.stepGoal > 0 ? state.settings.stepGoal : 0;
   const sleep = h.sleepHours ?? 0;
   const sleeping = state.sleepStart !== null;
@@ -135,7 +139,12 @@ export function HabitsGrid() {
         </Tile>}
 
         {shown.includes('pasos') && <Tile {...tileProps('pasos')} icon={<Footprints size={13} strokeWidth={1.75} className="text-orange-400" />} title="Pasos">
-          <NumInput decimal={false} label="Pasos de hoy (escribe el total)" value={steps} placeholder="Pasos de hoy" className="w-full rounded-lg bg-slate-800 px-2 py-2 text-center text-lg font-black tabular-nums text-white outline-none ring-1 ring-slate-700 focus:ring-accent" onChange={(n) => setDay(stepsDay, { steps: Math.min(200000, Math.round(n)) })} />
+          <NumInput decimal={false} label="Pasos de hoy (escribe los del móvil)" value={phoneSteps} placeholder="Pasos de hoy" className="w-full rounded-lg bg-slate-800 px-2 py-2 text-center text-lg font-black tabular-nums text-white outline-none ring-1 ring-slate-700 focus:ring-accent" onChange={(n) => setDay(stepsDay, { steps: Math.min(200000, Math.round(n)) })} />
+          {beltKm > 0 && (
+            <button type="button" className="w-full text-left text-[11px] text-slate-400" onClick={() => update((s) => ({ ...s, settings: { ...s.settings, noTreadmillSteps: !s.settings.noTreadmillSteps } }))}>
+              {state.settings.noTreadmillSteps ? `Cinta ${beltKm} km: no sumada (toca para sumar)` : `+${beltSteps.toLocaleString('es-ES')} pasos de la cinta (${beltKm} km) · total ${steps.toLocaleString('es-ES')}. Toca para no sumarlos`}
+            </button>
+          )}
           <DayPick value={stepsDay} today={key} label="Día de los pasos" onChange={setStepsDay} />
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1"><Bar value={stepGoal ? steps : 0} max={stepGoal || 1} color="bg-orange-400" /></div>

@@ -26,6 +26,8 @@ export interface Settings {
   measureDay?: number;
   /** Meta diaria de pasos que fija el usuario (sin definir = sin meta). */
   stepGoal?: number;
+  /** No sumar a los pasos los estimados de la cinta (por si el iPhone ya los contó). */
+  noTreadmillSteps?: boolean;
   /** Gramos de aceite que suelta un «chuf» de tu dispensador (se calibra pesando varios). Por defecto 0,5. */
   oilPuffG?: number;
   /** Analizar cada foto de comida dos veces y avisar si no coinciden (gasta el doble de cupo de la IA). */
@@ -487,6 +489,10 @@ export interface AppState {
   /** Rutina «Pelvis en la cama» personalizada. */
   /** Notas fijas por ejercicio (id → texto): se ven siempre al entrenarlo. */
   exerciseNotes?: Record<string, string>;
+  /** Alimentos favoritos del catálogo (ids). */
+  favFoods?: string[];
+  /** Medidas corregidas por ti por alimento (id → {loncha: 12, unidad: 120…} en gramos). */
+  foodUnits?: Record<string, Partial<Record<'unidad' | 'loncha' | 'rebanada' | 'cucharada' | 'cucharadita' | 'puñado' | 'ración', number>>>;
   pelvisNight?: import('./faceYoga').FaceNightCfg;
   discomfort: Discomfort[];
   /** Enlaces de vídeo de demostración elegidos por ti (clave = ejercicio o paso del calentamiento). */
