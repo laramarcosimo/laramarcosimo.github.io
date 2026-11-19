@@ -4,7 +4,7 @@ import { useLayoutEdit } from '../lib/layoutEdit';
 import { useStore } from '../lib/store';
 import type { HabitDay } from '../lib/types';
 import { cx, dayKey, round, uid } from '../lib/utils';
-import { faceStreak } from '../lib/streaks';
+import { faceStreak, routineStreak } from '../lib/streaks';
 import { HabitsCalendar } from './HabitsCalendar';
 import { FaceYogaNight } from './FaceYogaNight';
 import { FaceNightEditor } from './FaceNightEditor';
@@ -60,6 +60,7 @@ export function HabitsGrid() {
   const [faceDay, setFaceDay] = useState(key);
   const [hairDay, setHairDay] = useState(key);
   const [hairCal, setHairCal] = useState(false);
+  const [pelvisDay, setPelvisDay] = useState(key);
   const [pelvisRun, setPelvisRun] = useState(false);
   const [pelvisEdit, setPelvisEdit] = useState(false);
   const setDay = (k: string, p: Partial<HabitDay>) => update((s) => ({ ...s, habits: { ...s.habits, [k]: { ...(s.habits[k] ?? { agua: 0 }), ...p } } }));
@@ -73,6 +74,8 @@ export function HabitsGrid() {
   const sleep = h.sleepHours ?? 0;
   const sleeping = state.sleepStart !== null;
   const faceDays = faceStreak(state.habits);
+  const pelvisH: HabitDay = state.habits[pelvisDay] ?? { agua: 0 };
+  const pelvisDays = routineStreak(state.habits, 'pelvis');
   const hairH: HabitDay = state.habits[hairDay] ?? { agua: 0 };
   const lastWash = Object.keys(state.habits).filter((k) => state.habits[k]?.hairWash && k <= key).sort().pop();
   const lastDeep = Object.keys(state.habits).filter((k) => state.habits[k]?.hairDeep && k <= key).sort().pop();
@@ -203,12 +206,14 @@ export function HabitsGrid() {
 
 
         {shown.includes('pelvis') && <Tile {...tileProps('pelvis')} icon={<Moon size={13} strokeWidth={1.75} className="text-teal-400" />} title="Pelvis en la cama">
-          <div className="text-sm text-slate-300">{h.pelvis ? <span className="flex items-center gap-1 font-semibold text-emerald-500"><Check size={15} /> Hecho hoy</span> : `Rutina de ${pelvisMin} min mientras lees`}</div>
+          <div className="text-sm text-slate-300">{pelvisH.pelvis ? <span className="flex items-center gap-1 font-semibold text-emerald-500"><Check size={15} /> {pelvisDay === key ? 'Hecho hoy' : 'Hecho ese día'}</span> : `Rutina de ${pelvisMin} min mientras lees`}{pelvisDays > 0 && <span className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-amber-500"><Flame size={12} /> Racha: {pelvisDays} día{pelvisDays === 1 ? '' : 's'}</span>}</div>
+          <DayPick value={pelvisDay} today={key} label="Día de la rutina de pelvis" onChange={setPelvisDay} />
+          {pelvisDay !== key && <button className={cx('btn !py-1.5 text-xs', pelvisH.pelvis ? 'btn-ghost' : 'btn-green')} onClick={() => setDay(pelvisDay, { pelvis: !pelvisH.pelvis })}>{pelvisH.pelvis ? 'Quitar ese día' : 'Marcar hecho ese día'}</button>}
           <div className="flex gap-1.5">
             <button className="btn btn-blue min-w-0 flex-1 !px-2 !py-2 text-xs" onClick={() => setPelvisRun(true)}><Moon size={14} /> Empezar</button>
             <button className="btn btn-ghost shrink-0 !px-2.5 !py-2" onClick={() => setPelvisEdit(true)} aria-label="Editar rutina de pelvis"><Pencil size={14} /></button>
           </div>
-          {h.pelvis && <button className="btn btn-ghost !py-1.5 text-xs" onClick={() => set({ pelvis: false })}>Quitar de hoy</button>}
+          {pelvisDay === key && h.pelvis && <button className="btn btn-ghost !py-1.5 text-xs" onClick={() => set({ pelvis: false })}>Quitar de hoy</button>}
         </Tile>}
         {shown.includes('pelo') && <Tile {...tileProps('pelo')} icon={<Scissors size={13} strokeWidth={1.75} className="text-pink-400" />} title="Pelo">
           <div className="text-sm text-slate-300">
@@ -227,7 +232,7 @@ export function HabitsGrid() {
 
       {hairCal && <Modal title="Calendario del pelo" onClose={() => setHairCal(false)}><HabitsCalendar only="pelo" /></Modal>}
       {pelvisEdit && <FaceNightEditor kind="pelvis" onClose={() => setPelvisEdit(false)} />}
-      {pelvisRun && <FaceYogaNight kind="pelvis" onComplete={() => set({ pelvis: true })} onClose={() => setPelvisRun(false)} />}
+      {pelvisRun && <FaceYogaNight kind="pelvis" onComplete={() => setDay(pelvisDay, { pelvis: true })} onClose={() => setPelvisRun(false)} />}
       {editNight && <FaceNightEditor onClose={() => setEditNight(false)} />}
       {night && <FaceYogaNight onComplete={() => setDay(faceDay, { faceYoga: true })} onClose={() => setNight(false)} />}
       {supps.length > 0 && (

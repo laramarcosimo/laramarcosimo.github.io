@@ -13,3 +13,16 @@ describe('texto rápido', () => {
   });
   it('sin número cuenta como 1', () => expect(parseQuick('yogur')[0]).toMatchObject({ cantidad: 1 }));
 });
+
+import { routineStreak } from '../lib/streaks';
+import { dayKey } from '../lib/utils';
+
+describe('racha de pelvis', () => {
+  it('cuenta días seguidos y sigue viva desde ayer', () => {
+    const now = new Date(2026, 10, 19, 12).getTime();
+    const d = (n: number) => dayKey(now - n * 86400000);
+    expect(routineStreak({ [d(1)]: { pelvis: true }, [d(2)]: { pelvis: true } }, 'pelvis', now)).toBe(2);
+    expect(routineStreak({ [d(0)]: { pelvis: true } }, 'pelvis', now)).toBe(1);
+    expect(routineStreak({ [d(3)]: { pelvis: true } }, 'pelvis', now)).toBe(0);
+  });
+});

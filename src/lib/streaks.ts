@@ -60,17 +60,21 @@ export const weeklyStreak = (days: Map<string, WorkoutLog[]>, goal: number, toda
 /** Ubicación dominante de un día (si hubo ambas, gimnasio). */
 export const dayLocation = (list: WorkoutLog[] | undefined): Location | null => (!list || list.length === 0 ? null : list.some((w) => locationOf(w) === 'gym') ? 'gym' : 'home');
 
-/** Días seguidos con la rutina facial hecha. Si hoy aún no la has hecho, la racha sigue viva desde ayer. */
-export const faceStreak = (habits: Record<string, { faceYoga?: boolean } | undefined>, today = Date.now()): number => {
+/** Días seguidos con un hábito de rutina hecho. Si hoy aún no, la racha sigue viva desde ayer. */
+export const routineStreak = (habits: Record<string, object | undefined>, field: 'faceYoga' | 'pelvis', today = Date.now()): number => {
+  const ok = (t: number): boolean => !!(habits[dayKey(t)] as Record<string, unknown> | undefined)?.[field];
   let t = new Date(today).setHours(12, 0, 0, 0);
-  if (!habits[dayKey(t)]?.faceYoga) t -= DAY;
+  if (!ok(t)) t -= DAY;
   let n = 0;
-  while (habits[dayKey(t)]?.faceYoga) {
+  while (ok(t)) {
     n++;
     t -= DAY;
   }
   return n;
 };
+
+/** Días seguidos con la rutina facial hecha. */
+export const faceStreak = (habits: Record<string, { faceYoga?: boolean } | undefined>, today = Date.now()): number => routineStreak(habits, 'faceYoga', today);
 
 /** Hora del aviso de la rutina facial como {h, m}. */
 export const faceTimeOf = (s: { faceTime?: string }): { h: number; m: number } => {

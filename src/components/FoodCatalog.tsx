@@ -22,7 +22,7 @@ const defaultUnit = (i: CatalogItem): 'g' | UnitKey => {
 const defaultQty = (u: 'g' | UnitKey): number => (u === 'g' ? 100 : u === 'loncha' ? 2 : 1);
 
 /** Catálogo de alimentos: tabla de la app + tus productos + búsqueda de productos de Mercadona / HiperDino. Las cuentas son locales, sin IA. */
-export function FoodCatalog() {
+export function FoodCatalog({ slot }: { slot?: Slot } = {}) {
   const { state, update } = useStore();
   const [q, setQ] = useState('');
   const [store, setStore] = useState<StoreFilter>('Mercadona');
@@ -37,7 +37,8 @@ export function FoodCatalog() {
   const favs = useMemo(() => new Set(state.favFoods ?? []), [state.favFoods]);
   const all = useMemo(() => {
     const mine = (state.products ?? []).filter((p) => p.source !== 'auto').map(savedToItem);
-    return [...mine, ...builtinItems()].map((i) => withUnits(i, state.foodUnits));
+    const mineNames = new Set(mine.map((i) => norm(i.name)));
+    return [...mine, ...builtinItems().filter((b) => !mineNames.has(norm(b.name)))].map((i) => withUnits(i, state.foodUnits));
   }, [state.products, state.foodUnits]);
   const pantryNames = state.pantry.filter((p) => p.qty > 0).map((p) => p.name);
   const inPantry = (i: CatalogItem): boolean => pantryNames.some((n) => looseMatch(n, i.name));
@@ -140,18 +141,19 @@ export function FoodCatalog() {
           <p className="text-[11px] text-slate-500">Datos de la comunidad: comprueba que coinciden con tu envase antes de fiarte.</p>
         </div>
       )}
-      {sel && <FoodSheet item={sel} adopt={adopt} onClose={() => setSel(null)} />}
+      {sel && <FoodSheet item={sel} slot={slot} adopt={adopt} onClose={() => setSel(null)} />}
     </div>
   );
 }
 
-function FoodSheet({ item, adopt, onClose }: { item: CatalogItem; adopt: (i: CatalogItem) => CatalogItem; onClose: () => void }) {
+function FoodSheet({ item, slot: slot0, adopt, onClose }: { item: CatalogItem; slot?: Slot; adopt: (i: CatalogItem) => CatalogItem; onClose: () => void }) {
   const { state, update } = useStore();
   const [cur, setCur] = useState<CatalogItem>(() => withUnits(item, state.foodUnits));
   const [unit, setUnit] = useState<'g' | UnitKey>(() => defaultUnit(cur));
   const [qty, setQty] = useState(() => defaultQty(defaultUnit(cur)));
-  const [slot, setSlot] = useState<Slot>(() => inferSlot(Date.now()));
+  const [slot, setSlot] = useState<Slot>(() => slot0 ?? inferSlot(Date.now()));
   const [done, setDone] = useState(false);
+  const [edit, setEdit] = useState(false);
   const grams = gramsFor(cur, qty, unit);
   const m = grams ? macrosOf(cur, grams) : null;
   const exactInPantry = state.pantry.some((p) => p.qty > 0 && norm(p.name) === norm(cur.name));
@@ -176,6 +178,26 @@ function FoodSheet({ item, adopt, onClose }: { item: CatalogItem; adopt: (i: Cat
       return { ...s, foodUnits: { ...(s.foodUnits ?? {}), [a.id]: prev } };
     });
   };
+  /** Corrige un valor por 100 g (tabla del envase): si venía de la tabla general o de internet, se guarda una copia tuya. */
+  const setVal = (k: 'kcal' | 'protein' | 'carbs' | 'fat', n: number) => {
+    let a = cur;
+    if (cur.source !== 'mio') {
+      if (cur.source === 'online') a = adopt(cur);
+      else {
+        const id = uid();
+        a = { ...cur, id: `s:${id}`, source: 'mio', store: 'Mío' };
+        const mine = a;
+        update((s) => {
+          const s2 = saveProduct(s, { ...itemToSaved(mine), id });
+          const u = s.foodUnits?.[cur.id];
+          return u ? { ...s2, foodUnits: { ...s2.foodUnits, [mine.id]: u } } : s2;
+        });
+      }
+    }
+    const next = { ...a, [k]: n };
+    setCur(next);
+    update((s) => ({ ...s, products: (s.products ?? []).map((p) => (`s:${p.id}` === next.id ? { ...p, [k]: n } : p)) }));
+  };
   const togglePantry = () => {
     const a = own();
     update((s) => ({ ...s, pantry: exactInPantry ? s.pantry.filter((p) => norm(p.name) !== norm(a.name)) : addToPantry(s.pantry, [{ name: a.name, store: a.store !== 'Genérico' && a.store !== 'Mío' ? a.store : undefined }]) }));
@@ -197,6 +219,14 @@ function FoodSheet({ item, adopt, onClose }: { item: CatalogItem; adopt: (i: Cat
           <div>Proteína {cur.protein} g · Hidratos {cur.carbs} g · Grasas {cur.fat} g{cur.fiber ? ` · Fibra ${cur.fiber} g` : ''}</div>
           <div className="mt-0.5 text-slate-500">{cur.source === 'tabla' ? 'Valores medios de la tabla de la app (no de una marca concreta).' : cur.source === 'online' ? 'Valores del envase según Open Food Facts.' : 'Valores guardados por ti.'}</div>
         </div>
+        <button className="text-[11px] font-semibold text-accent underline" onClick={() => setEdit(!edit)}>{edit ? 'Cerrar' : 'Corregir los valores por 100 g'}</button>
+        {edit && (
+          <div className="grid grid-cols-4 gap-1.5">
+            {([['kcal', 'kcal'], ['protein', 'Prot'], ['carbs', 'Hidr.'], ['fat', 'Grasas']] as const).map(([k, l]) => (
+              <div key={k}><div className="text-[10px] uppercase text-slate-400">{l}</div><NumInput value={cur[k]} label={`${cur.name}: ${l} por 100 g`} className="field !py-1.5 text-center text-xs" onChange={(n) => setVal(k, n)} /></div>
+            ))}
+          </div>
+        )}
         <div className="flex gap-2">
           <button className={cx('btn flex-1 !py-2 text-xs', exactInPantry ? 'btn-green' : 'btn-ghost')} onClick={togglePantry}>{exactInPantry ? <><Check size={14} /> En mi despensa</> : <><Refrigerator size={14} /> Tengo en casa</>}</button>
         </div>

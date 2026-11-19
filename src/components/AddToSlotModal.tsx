@@ -10,16 +10,17 @@ import { movePlannedToDiary } from '../lib/plan';
 import { dayKey } from '../lib/utils';
 import { FoodComposer } from './FoodComposer';
 import { PantryPicker } from './PantryPicker';
+import { FoodCatalog } from './FoodCatalog';
 import { Modal, NumInput } from './ui';
 
 
-type Tab = 'tuppers' | 'platos' | 'despensa' | 'mano';
+type Tab = 'tuppers' | 'platos' | 'despensa' | 'mano' | 'buscar';
 
 /** «+ Añadir» de una toma: foto rápida, un tupper, un plato frecuente, algo de la despensa o a mano. */
 export function AddToSlotModal({ slot, onClose, onPhoto }: { slot: Slot; onClose: () => void; onPhoto: (gallery?: boolean) => void }) {
   const { state, update } = useStore();
   const hasTup = state.tuppers.some((t) => t.servings > 0);
-  const [tab, setTab] = useState<Tab>(hasTup ? 'tuppers' : state.mealTemplates.length ? 'platos' : 'mano');
+  const [tab, setTab] = useState<Tab>('mano');
   const [scan, setScan] = useState(false);
   const [manual, setManual] = useState(false);
   const draftKey = `diario:${slot}`;
@@ -29,7 +30,7 @@ export function AddToSlotModal({ slot, onClose, onPhoto }: { slot: Slot; onClose
   const label = SLOTS.find((s) => s.id === slot)?.label ?? '';
   const planned = state.dayPlan?.day === dayKey() ? state.dayPlan.slots[slot] : undefined;
   const done = () => onClose();
-  const TABS: [Tab, string][] = [['tuppers', 'Tuppers'], ['platos', 'Platos'], ['despensa', 'Despensa'], ['mano', inDraft > 0 ? `A mano (${inDraft})` : 'A mano']];
+  const TABS: [Tab, string][] = [['mano', inDraft > 0 ? `Escribir (${inDraft})` : 'Escribir'], ['buscar', 'Buscar'], ['despensa', 'Despensa'], ['platos', 'Platos'], ['tuppers', 'Tuppers']];
 
   const row = (key: string, name: string, sub: string, kcal: number, onTap: () => void) => (
     <button key={key} className="flex w-full items-center justify-between rounded-xl bg-slate-800 px-3 py-2.5 text-left active:scale-[0.99]" onClick={() => { onTap(); done(); }}>
@@ -52,14 +53,14 @@ export function AddToSlotModal({ slot, onClose, onPhoto }: { slot: Slot; onClose
           </div>
         </div>
       )}
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <button className="btn btn-green" onClick={() => { onClose(); onPhoto(); }}><Camera size={18} strokeWidth={1.75} /> Foto rápida</button>
-        <button className="btn btn-ghost" onClick={() => { onClose(); onPhoto(true); }}><ImagePlus size={18} strokeWidth={1.75} /> Subir foto</button>
-      </div>
-      <button className="btn btn-ghost mb-3 w-full" onClick={() => setScan(true)}><ScanBarcode size={18} strokeWidth={1.75} /> Escanear código de barras</button>
-      {scan && <BarcodeScanner slot={slot} onClose={() => { setScan(false); onClose(); }} />}
-      <div className="mb-3 grid grid-cols-4 gap-1 rounded-xl bg-slate-800 p-1">
+      <div className="mb-3 grid grid-cols-5 gap-1 rounded-xl bg-slate-800 p-1">
         {TABS.map(([id, l]) => <button key={id} onClick={() => setTab(id)} className={cx('min-w-0 truncate rounded-lg px-0.5 py-2 text-[11px] font-bold', tab === id ? 'bg-accent text-white' : 'text-slate-400')}>{l}</button>)}
+      </div>
+      {scan && <BarcodeScanner slot={slot} onClose={() => { setScan(false); onClose(); }} />}
+      <div className="mb-3 grid grid-cols-3 gap-1.5">
+        <button className="btn btn-ghost !px-1 !py-2 text-xs" onClick={() => { onClose(); onPhoto(); }}><Camera size={15} strokeWidth={1.75} /> Foto</button>
+        <button className="btn btn-ghost !px-1 !py-2 text-xs" onClick={() => { onClose(); onPhoto(true); }}><ImagePlus size={15} strokeWidth={1.75} /> Galería</button>
+        <button className="btn btn-ghost !px-1 !py-2 text-xs" onClick={() => setScan(true)}><ScanBarcode size={15} strokeWidth={1.75} /> Código</button>
       </div>
       <div className="space-y-1.5">
         {tab === 'tuppers' && (!hasTup ? <p className="text-sm text-slate-500">No tienes tuppers con raciones.</p> : state.tuppers.filter((t) => t.servings > 0).map((t) => row(t.id, t.name, `quedan ${t.servings} · P ${t.proteinas}`, t.calorias, () => update((s) => consumeTupper(s, t.id, slot)))))}
@@ -67,6 +68,7 @@ export function AddToSlotModal({ slot, onClose, onPhoto }: { slot: Slot; onClose
 
       </div>
       {/* Siempre montados (solo se ocultan): lo que eliges no se pierde al cambiar de pestaña. */}
+      <div className={tab === 'buscar' ? '' : 'hidden'}><FoodCatalog slot={slot} /></div>
       <div className={tab === 'despensa' ? '' : 'hidden'}>
         <PantryPicker onQuick={(f) => { update((s) => logTemplate(s, { name: f.portion, calorias: f.kcal, proteinas: f.protein, carbs: f.carbs, grasas: f.fat, ingredientes: [f.item.name] }, true, slot)); done(); }} onDone={(items, used) => { addToDraft(draftKey, items, used); setManual(false); setTab('mano'); }} />
       </div>
