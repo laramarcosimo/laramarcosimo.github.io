@@ -1,4 +1,4 @@
-import { Check, Globe, Loader2, Refrigerator, Search, Star } from 'lucide-react';
+import { Camera, Check, Globe, Loader2, Refrigerator, Search, Star } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { CAT_LIST, UNIT_KEYS, UNIT_LABEL, builtinItems, detailLine, gramsFor, itemToSaved, macrosOf, savedToItem, searchItems, searchOnline, withUnits, type CatalogItem, type StoreFilter, type UnitKey } from '../lib/catalog';
 import { addToPantry } from '../lib/pantry';
@@ -8,6 +8,7 @@ import { SLOTS, inferSlot, logTemplate } from '../lib/templates';
 import type { Slot } from '../lib/types';
 import { cx, looseMatch, norm, uid } from '../lib/utils';
 import { Modal, NumInput } from './ui';
+import { LabelPhotoModal } from './LabelPhotoModal';
 
 type View = 'favoritos' | 'despensa' | 'todos' | string;
 const STORES: StoreFilter[] = ['Mercadona', 'HiperDino', 'todas'];
@@ -32,6 +33,7 @@ export function FoodCatalog({ slot }: { slot?: Slot } = {}) {
   const [asked, setAsked] = useState('');
   const [limit, setLimit] = useState(PAGE);
   const [sel, setSel] = useState<CatalogItem | null>(null);
+  const [labelOpen, setLabelOpen] = useState(false);
   const ctl = useRef<AbortController | null>(null);
 
   const favs = useMemo(() => new Set(state.favFoods ?? []), [state.favFoods]);
@@ -119,6 +121,7 @@ export function FoodCatalog({ slot }: { slot?: Slot } = {}) {
           {STORES.map((s) => <button key={s} onClick={() => setStore(s)} aria-pressed={store === s} className={cx('rounded-full px-3 py-1.5 text-xs font-semibold', store === s ? 'bg-accent text-white' : 'bg-slate-800 text-slate-400')}>{s === 'todas' ? 'Todas' : s}</button>)}
           <button className="btn btn-blue ml-auto !px-3 !py-1.5 text-xs" disabled={busy || q.trim().length < 3} onClick={() => void search()}>{busy ? <Loader2 size={14} className="animate-spin" /> : <Globe size={14} />} Buscar en el súper</button>
         </div>
+        <button className="btn btn-ghost w-full !py-2 text-xs" onClick={() => setLabelOpen(true)}><Camera size={14} /> Añadir un producto con foto de su tabla nutricional</button>
         <p className="text-[11px] leading-snug text-slate-500">Escribe y filtra tu lista al instante. Para productos concretos (p. ej. «jamón cocido Hacendado») pulsa «Buscar en el súper»: trae los valores del envase y se guarda al usarlo.</p>
       </div>
 
@@ -141,6 +144,7 @@ export function FoodCatalog({ slot }: { slot?: Slot } = {}) {
           <p className="text-[11px] text-slate-500">Datos de la comunidad: comprueba que coinciden con tu envase antes de fiarte.</p>
         </div>
       )}
+      {labelOpen && <LabelPhotoModal onClose={() => setLabelOpen(false)} onSaved={(n) => { setQ(n); setView('todos'); }} />}
       {sel && <FoodSheet item={sel} slot={slot} adopt={adopt} onClose={() => setSel(null)} />}
     </div>
   );
