@@ -8,6 +8,7 @@ import { SLOTS, inferSlot, logTemplate } from '../lib/templates';
 import type { Slot } from '../lib/types';
 import { cx, looseMatch, norm, uid } from '../lib/utils';
 import { Modal, NumInput } from './ui';
+import { PackCalc } from './PackCalc';
 import { LabelPhotoModal } from './LabelPhotoModal';
 
 type View = 'favoritos' | 'despensa' | 'todos' | string;
@@ -277,11 +278,14 @@ function FoodSheet({ item, slot: slot0, adopt, onClose }: { item: CatalogItem; s
             <span className="text-sm text-slate-300">{unit === 'g' ? 'g' : qty === 1 ? UNIT_LABEL[unit].one : UNIT_LABEL[unit].many}</span>
           </div>
           {unit !== 'g' && (
+            <>
             <div className="mt-2 flex items-center gap-2 rounded-xl bg-slate-800 p-2 text-xs text-slate-300">
               <span>1 {UNIT_LABEL[unit].one} pesa</span>
               <NumInput label={`Gramos de 1 ${UNIT_LABEL[unit].one}`} value={cur.units[unit] ?? 0} placeholder="?" className="h-8 w-16 rounded-md bg-slate-900 text-center font-semibold text-white outline-none focus:ring-1 focus:ring-accent" onChange={(g) => setUnitG(unit, g)} />
               <span>g · se guarda para la próxima vez</span>
             </div>
+            <PackCalc label={UNIT_LABEL[unit].many} onUse={(g) => setUnitG(unit, g)} />
+            </>
           )}
         </div>
 

@@ -6,6 +6,7 @@ import { compressToBase64 } from '../lib/image';
 import { saveProduct } from '../lib/products';
 import { useStore } from '../lib/store';
 import { uid } from '../lib/utils';
+import { PackCalc } from './PackCalc';
 import { ErrorBox, Modal, NumInput } from './ui';
 
 interface V { kcal: number; protein: number; carbs: number; fat: number; fiber: number; sugars: number; satFat: number; salt: number }
@@ -91,6 +92,7 @@ export function LabelPhotoModal({ onClose, onSaved }: { onClose: () => void; onS
                 <NumInput value={w} label="Gramos de una unidad" className="field !w-20 !py-1.5 text-center text-xs" onChange={setW} />
                 <span className="text-xs text-slate-400">g</span>
               </div>
+              <PackCalc label={UNIT_LABEL[unit].many} onUse={setW} />
             </div>
             <button className="btn btn-green w-full" onClick={save}><Check size={16} /> Guardar producto</button>
           </div>
