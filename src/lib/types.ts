@@ -491,6 +491,8 @@ export interface AppState {
   exerciseNotes?: Record<string, string>;
   /** Alimentos favoritos del catálogo (ids). */
   favFoods?: string[];
+  /** Alimentos predeterminados (ids «b:…») que has renombrado o ocultado: se sustituyen por tu copia. */
+  hiddenFoods?: string[];
   /** Medidas corregidas por ti por alimento (id → {loncha: 12, unidad: 120…} en gramos). */
   foodUnits?: Record<string, Partial<Record<'unidad' | 'loncha' | 'rebanada' | 'cucharada' | 'cucharadita' | 'puñado' | 'ración', number>>>;
   pelvisNight?: import('./faceYoga').FaceNightCfg;

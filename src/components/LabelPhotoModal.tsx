@@ -1,4 +1,4 @@
-import { Camera, Check, Loader2 } from 'lucide-react';
+import { Camera, Check, ImagePlus, Loader2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { UNIT_KEYS, UNIT_LABEL, type UnitKey } from '../lib/catalog';
 import { readNutritionLabel } from '../lib/gemini';
@@ -16,6 +16,7 @@ const STORES = ['Mercadona', 'HiperDino', 'Otro'];
 export function LabelPhotoModal({ onClose, onSaved }: { onClose: () => void; onSaved: (name: string) => void }) {
   const { state, update } = useStore();
   const ref = useRef<HTMLInputElement>(null);
+  const galRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [read, setRead] = useState(false);
@@ -28,6 +29,7 @@ export function LabelPhotoModal({ onClose, onSaved }: { onClose: () => void; onS
 
   const onFile = async (f: File | undefined) => {
     if (ref.current) ref.current.value = '';
+    if (galRef.current) galRef.current.value = '';
     if (!f) return;
     setBusy(true);
     setErr('');
@@ -66,7 +68,11 @@ export function LabelPhotoModal({ onClose, onSaved }: { onClose: () => void; onS
     <Modal title="Foto de la tabla nutricional" onClose={onClose}>
       <div className="space-y-3">
         <input ref={ref} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
-        <button className="btn btn-blue w-full" disabled={busy} onClick={() => ref.current?.click()}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} {read ? 'Repetir la foto' : 'Hacer foto a la tabla'}</button>
+        <input ref={galRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
+        <div className="grid grid-cols-2 gap-2">
+          <button className="btn btn-blue" disabled={busy} onClick={() => ref.current?.click()}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} {read ? 'Otra foto' : 'Hacer foto'}</button>
+          <button className="btn btn-ghost" disabled={busy} onClick={() => galRef.current?.click()}><ImagePlus size={16} /> Subir de galería</button>
+        </div>
         <p className="text-[11px] text-slate-400">Con buena luz y la tabla recta. La IA la lee una sola vez; luego queda guardado y no se vuelve a usar.</p>
         {err && <ErrorBox msg={err} />}
         {read && (

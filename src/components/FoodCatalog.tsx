@@ -40,8 +40,9 @@ export function FoodCatalog({ slot }: { slot?: Slot } = {}) {
   const all = useMemo(() => {
     const mine = (state.products ?? []).filter((p) => p.source !== 'auto').map(savedToItem);
     const mineNames = new Set(mine.map((i) => norm(i.name)));
-    return [...mine, ...builtinItems().filter((b) => !mineNames.has(norm(b.name)))].map((i) => withUnits(i, state.foodUnits));
-  }, [state.products, state.foodUnits]);
+    const hidden = new Set(state.hiddenFoods ?? []);
+    return [...mine, ...builtinItems().filter((b) => !mineNames.has(norm(b.name)) && !hidden.has(b.id))].map((i) => withUnits(i, state.foodUnits));
+  }, [state.products, state.foodUnits, state.hiddenFoods]);
   const pantryNames = state.pantry.filter((p) => p.qty > 0).map((p) => p.name);
   const inPantry = (i: CatalogItem): boolean => pantryNames.some((n) => looseMatch(n, i.name));
   const [view, setView] = useState<View>(() => ((state.favFoods ?? []).length > 0 ? 'favoritos' : 'todos'));
@@ -158,6 +159,8 @@ function FoodSheet({ item, slot: slot0, adopt, onClose }: { item: CatalogItem; s
   const [slot, setSlot] = useState<Slot>(() => slot0 ?? inferSlot(Date.now()));
   const [done, setDone] = useState(false);
   const [edit, setEdit] = useState(false);
+  const [ren, setRen] = useState(false);
+  const [nameDraft, setNameDraft] = useState(item.name);
   const grams = gramsFor(cur, qty, unit);
   const m = grams ? macrosOf(cur, grams) : null;
   const exactInPantry = state.pantry.some((p) => p.qty > 0 && norm(p.name) === norm(cur.name));
@@ -182,25 +185,42 @@ function FoodSheet({ item, slot: slot0, adopt, onClose }: { item: CatalogItem; s
       return { ...s, foodUnits: { ...(s.foodUnits ?? {}), [a.id]: prev } };
     });
   };
-  /** Corrige un valor por 100 g (tabla del envase): si venía de la tabla general o de internet, se guarda una copia tuya. */
+  /** Convierte el alimento en uno tuyo (si venía de la tabla general o de internet) para poder editarlo. */
+  const ensureMine = (): CatalogItem => {
+    if (cur.source === 'mio') return cur;
+    if (cur.source === 'online') return adopt(cur);
+    const id = uid();
+    const mine: CatalogItem = { ...cur, id: `s:${id}`, source: 'mio', store: 'Mío' };
+    update((s) => {
+      const s2 = saveProduct(s, { ...itemToSaved(mine), id });
+      const u = s.foodUnits?.[cur.id];
+      return u ? { ...s2, foodUnits: { ...s2.foodUnits, [mine.id]: u } } : s2;
+    });
+    return mine;
+  };
+  /** Corrige un valor por 100 g (tabla del envase): se guarda una copia tuya. */
   const setVal = (k: 'kcal' | 'protein' | 'carbs' | 'fat', n: number) => {
-    let a = cur;
-    if (cur.source !== 'mio') {
-      if (cur.source === 'online') a = adopt(cur);
-      else {
-        const id = uid();
-        a = { ...cur, id: `s:${id}`, source: 'mio', store: 'Mío' };
-        const mine = a;
-        update((s) => {
-          const s2 = saveProduct(s, { ...itemToSaved(mine), id });
-          const u = s.foodUnits?.[cur.id];
-          return u ? { ...s2, foodUnits: { ...s2.foodUnits, [mine.id]: u } } : s2;
-        });
-      }
-    }
-    const next = { ...a, [k]: n };
+    const next = { ...ensureMine(), [k]: n };
     setCur(next);
     update((s) => ({ ...s, products: (s.products ?? []).map((p) => (`s:${p.id}` === next.id ? { ...p, [k]: n } : p)) }));
+  };
+  /** Cambia el nombre (también de los alimentos predeterminados: la copia tuya sustituye al original). */
+  const rename = () => {
+    const n = nameDraft.trim();
+    if (!n || n === cur.name) {
+      setRen(false);
+      return;
+    }
+    const wasBuiltin = cur.source === 'tabla';
+    const origId = cur.id;
+    const next = { ...ensureMine(), name: n };
+    setCur(next);
+    update((s) => ({
+      ...s,
+      products: (s.products ?? []).map((p) => (`s:${p.id}` === next.id ? { ...p, name: n } : p)),
+      hiddenFoods: wasBuiltin ? [...new Set([...(s.hiddenFoods ?? []), origId])] : s.hiddenFoods,
+    }));
+    setRen(false);
   };
   const togglePantry = () => {
     const a = own();
@@ -223,6 +243,14 @@ function FoodSheet({ item, slot: slot0, adopt, onClose }: { item: CatalogItem; s
           <div>Proteína {cur.protein} g · Hidratos {cur.carbs} g · Grasas {cur.fat} g{cur.fiber ? ` · Fibra ${cur.fiber} g` : ''}</div>
           <div className="mt-0.5 text-slate-500">{cur.source === 'tabla' ? 'Valores medios de la tabla de la app (no de una marca concreta).' : cur.source === 'online' ? 'Valores del envase según Open Food Facts.' : 'Valores guardados por ti.'}</div>
         </div>
+        {ren ? (
+          <div className="flex gap-1.5">
+            <input className="field !py-2 text-sm" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && rename()} aria-label="Nuevo nombre" />
+            <button className="btn btn-green shrink-0 !px-3" onClick={rename}>Guardar</button>
+          </div>
+        ) : (
+          <button className="text-[11px] font-semibold text-accent underline" onClick={() => { setNameDraft(cur.name); setRen(true); }}>Cambiar el nombre</button>
+        )}
         <button className="text-[11px] font-semibold text-accent underline" onClick={() => setEdit(!edit)}>{edit ? 'Cerrar' : 'Corregir los valores por 100 g'}</button>
         {edit && (
           <div className="grid grid-cols-4 gap-1.5">
