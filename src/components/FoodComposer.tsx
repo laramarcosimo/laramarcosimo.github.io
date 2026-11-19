@@ -8,7 +8,8 @@ import { findProducts, gramsOf, macrosFor } from '../lib/products';
 import { saveProduct } from '../lib/products';
 import { useStore } from '../lib/store';
 import { ProductRater } from './ProductRater';
-import { norm } from '../lib/utils';
+import { norm, uid } from '../lib/utils';
+import { parseQuick } from '../lib/quickMeal';
 import { storeList } from '../lib/stores';
 import type { SavedProduct } from '../lib/types';
 import { ErrorBox, NumInput } from './ui';
@@ -16,6 +17,9 @@ import { QtyInput, stepOf } from './QtyInput';
 import { ChefChat } from './ChefChat';
 
 const UNITS = ['unidades', 'g', 'ml', 'raciones', 'cucharadas', 'lonchas', 'rebanadas', 'puñados', 'tazas'];
+const UNITKEY: Record<string, 'unidad' | 'loncha' | 'rebanada' | 'cucharada' | 'puñado'> = { unidades: 'unidad', lonchas: 'loncha', rebanadas: 'rebanada', cucharadas: 'cucharada', puñados: 'puñado' };
+const SING: Record<string, string> = { unidades: 'unidad', lonchas: 'loncha', rebanadas: 'rebanada', cucharadas: 'cucharada', puñados: 'puñado', raciones: 'ración', tazas: 'taza' };
+interface MV { kcal: number; protein: number; carbs: number; fat: number; w: number }
 const blank = (): FoodItemInput => ({ nombre: '', cantidad: 1, unidad: 'unidades' });
 
 export interface ComposedMeal {
@@ -46,6 +50,12 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
   const [err, setErr] = useState('');
   const camRef = useRef<HTMLInputElement>(null);
   const [save, setSave] = useState(false);
+  const [quick, setQuick] = useState('');
+  /** Posiciones de alimentos de los que no se conocen los valores: se piden a mano una vez y se guardan. */
+  const [missing, setMissing] = useState<number[]>([]);
+  const [mv, setMv] = useState<Record<number, MV>>({});
+  const [run, setRun] = useState(0);
+  const calcRef = useRef<(photo: File | null, onlyLocal?: boolean, noAI?: boolean) => Promise<void>>(async () => {});
   /** Producto guardado elegido por alimento (id); 'ai' = usar la estimación de la IA. Por defecto, el último guardado que coincide. */
   const [picks, setPicks] = useState<Record<number, string>>({});
   useEffect(() => {
@@ -68,7 +78,7 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
     return m.find((x) => x.id === picks[i]) ?? m[0] ?? null;
   };
 
-  const calc = async (photo: File | null, onlyLocal = false) => {
+  const calc = async (photo: File | null, onlyLocal = false, noAI = false) => {
     setBusy(true);
     setErr('');
     try {
@@ -76,18 +86,27 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
       // Alimentos con producto guardado y cantidad convertible a gramos: se calculan aquí con TUS valores.
       const local: Record<number, FoodItemEstimate> = {};
       const rest: FoodItemInput[] = [];
+      const restIdx: number[] = [];
       items.forEach((it, i) => {
         if (!it.nombre.trim()) return;
         const p = chosen(i, it);
-        const g = p ? gramsOf(p, it.cantidad, it.unidad) : null;
+        let g = p ? gramsOf(p, it.cantidad, it.unidad) : null;
+        // Lonchas, rebanadas…: el peso de cada una está guardado con el producto.
+        if (p && g === null && it.unidad !== 'raciones') g = resolveLine(`${it.cantidad} ${it.unidad === 'unidades' ? '' : it.unidad} de ${p.name}`)?.grams ?? null;
         if (p && g !== null) local[i] = { nombre: p.brand ? `${p.name} (${p.brand})` : p.name, cantidad: `${it.cantidad} ${it.unidad}`, supuesto: `tus valores guardados, ${Math.round(g)} g`, p100: { calorias: p.kcal, proteinas: p.protein, carbs: p.carbs, grasas: p.fat }, ...macrosFor(p, g) };
         else {
           const t = !p && it.unidad !== 'raciones' ? resolveLine(`${it.cantidad} ${it.unidad === 'unidades' ? '' : it.unidad} de ${it.nombre}`) : null;
           if (t) local[i] = { nombre: it.nombre, cantidad: `${it.cantidad} ${it.unidad}`, supuesto: `tabla de composición, ${Math.round(t.grams)} g`, p100: { calorias: (t.kcal * 100) / t.grams, proteinas: (t.protein * 100) / t.grams, carbs: (t.carbs * 100) / t.grams, grasas: (t.fat * 100) / t.grams }, calorias: t.kcal, proteinas: Math.round(t.protein), carbs: Math.round(t.carbs), grasas: Math.round(t.fat) };
-          else rest.push(it);
+          else { rest.push(it); restIdx.push(i); }
         }
       });
       // Al abrir para editar solo se calcula lo que la tabla o tus productos ya saben (sin gastar IA); lo demás lo calculas tú con el botón.
+      if (noAI && !onlyLocal && rest.length > 0) {
+        setMissing(restIdx);
+        setEst(null);
+        return;
+      }
+      setMissing([]);
       if (onlyLocal && (rest.length > 0 || Object.keys(local).length === 0)) return;
       const ai: MealEstimate = rest.length ? await estimateItems(state.settings, rest, storeList(state.defaultSupermarket, state.supermarkets), state.defaultSupermarket, b64) : { items: [], dudas: [], necesitaFoto: false };
       let k = 0;
@@ -106,9 +125,45 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
       setBusy(false);
     }
   };
+  calcRef.current = calc;
+  // Tras guardar valores o sumar texto rápido se recalcula (el timeout deja que la base de alimentos se actualice antes).
+  useEffect(() => {
+    if (run === 0) return;
+    const t = setTimeout(() => void calcRef.current(null, false, true), 0);
+    return () => clearTimeout(t);
+  }, [run]);
+  const addQuick = () => {
+    const parsed = parseQuick(quick);
+    if (parsed.length === 0) return;
+    setItems([...items.filter((x) => x.nombre.trim()), ...parsed]);
+    setQuick('');
+    setEst(null);
+    setMissing([]);
+    setPicks({});
+    setRun((r) => r + 1);
+  };
+  const saveMissing = (i: number) => {
+    const it = items[i];
+    const v = mv[i];
+    if (!it || !v || !(v.kcal > 0)) {
+      setErr('Pon al menos las calorías por 100 g.');
+      return;
+    }
+    setErr('');
+    const name = it.nombre.trim();
+    const uk = UNITKEY[it.unidad];
+    update((s) => {
+      const s2 = saveProduct(s, { id: uid(), name, kcal: v.kcal, protein: v.protein, carbs: v.carbs, fat: v.fat, sugars: 0, satFat: 0, fiber: 0, salt: 0, ...(it.unidad === 'raciones' && v.w > 0 ? { serving: v.w } : {}), ...(it.unidad === 'unidades' && v.w > 0 ? { pack: v.w } : {}) });
+      const saved = (s2.products ?? []).find((x) => x.name.toLowerCase() === name.toLowerCase() && !x.brand);
+      if (!saved || !uk || !(v.w > 0)) return s2;
+      const key = `s:${saved.id}`;
+      return { ...s2, foodUnits: { ...s2.foodUnits, [key]: { ...s2.foodUnits?.[key], [uk]: v.w } } };
+    });
+    setRun((r) => r + 1);
+  };
   // Con alimentos elegidos de la despensa se calcula directamente.
   useEffect(() => {
-    if (autoCalc && filled.length > 0) void calc(null);
+    if (autoCalc && filled.length > 0) void calc(null, false, true);
     else if (localCalc && filled.length > 0) void calc(null, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -146,6 +201,7 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
     return resolveLine(`${it.cantidad} ${it.unidad === 'unidades' ? '' : it.unidad} de ${it.nombre}`)?.grams ?? null;
   };
   const patchItem = (i: number, p: Partial<FoodItemInput>) => {
+    setMissing([]);
     const next = items.map((x, k) => (k === i ? { ...x, ...p } : x));
     setItems(next);
     // Cambiar solo la cantidad o la unidad recalcula AL INSTANTE (sin IA ni recargar) si se conocen los valores por 100 g.
@@ -178,12 +234,20 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
           <button className="shrink-0 font-semibold text-accent" onClick={() => { if (draftKey) clearDraft(draftKey); setItems(initial && initial.length ? initial : [blank()]); setEst(null); setRestored(false); }}>Empezar de cero</button>
         </div>
       )}
+      <div className="space-y-1.5 rounded-xl bg-accent/10 p-2.5">
+        <div className="text-xs font-semibold text-slate-200">Escribe lo que has comido, todo seguido</div>
+        <div className="flex gap-1.5">
+          <input className="field !py-2" placeholder="2 queso, 2 pan, 1 jamón, 1 yogur" value={quick} onChange={(e) => setQuick(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addQuick()} aria-label="Lo que has comido" />
+          <button className="btn btn-blue shrink-0 !px-3" disabled={!quick.trim() || busy} onClick={addQuick}>Sumar</button>
+        </div>
+        <div className="text-[11px] text-slate-400">Sin unidad: el queso y el embutido van por lonchas y el pan por rebanadas. También vale «150 g arroz» o «2 cucharadas mayonesa».</div>
+      </div>
       <p className="text-xs text-slate-400">Escribe lo que comes y la cantidad (p. ej. «huevos duros», 2 unidades). Calculo calorías y macros con los productos de tu supermercado habitual.</p>
       {items.map((it, i) => (
         <div key={i} data-keyrow className="space-y-1.5 rounded-xl bg-slate-800/50 p-2">
           <div className="flex items-center gap-1.5">
             <input className="field !py-2" placeholder="Alimento (ej: huevos duros)" value={it.nombre} onChange={(e) => patchItem(i, { nombre: e.target.value })} aria-label="Alimento" />
-            {items.length > 1 && <button className="shrink-0 p-1 text-slate-500" onClick={() => { setItems(items.filter((_, k) => k !== i)); setEst(null); }} aria-label="Quitar alimento"><X size={16} /></button>}
+            {items.length > 1 && <button className="shrink-0 p-1 text-slate-500" onClick={() => { setItems(items.filter((_, k) => k !== i)); setEst(null); setMissing([]); }} aria-label="Quitar alimento"><X size={16} /></button>}
           </div>
           <div className="inline-flex gap-1 rounded-lg bg-slate-700/60 p-0.5 text-[11px] font-bold" role="group" aria-label="Tipo de medida">
             {([[false, 'Unidades / ración'], [true, 'Gramos (g)']] as const).map(([g, l]) => {
@@ -226,7 +290,40 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
         </div>
       ))}
       <button className="flex items-center gap-1 text-xs font-semibold text-accent" onClick={() => setItems([...items, blank()])}><Plus size={14} /> Añadir otro alimento</button>
-      <button className="btn btn-blue w-full" disabled={filled.length === 0 || busy} onClick={() => void calc(null)}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} Calcular con IA</button>
+      <button className="btn btn-blue w-full" disabled={filled.length === 0 || busy} onClick={() => void calc(null, false, true)}>{busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Sumar con mis valores</button>
+      <button className="btn btn-ghost w-full text-xs" disabled={filled.length === 0 || busy} onClick={() => void calc(null)}><Sparkles size={14} /> Estimar con IA (menos preciso)</button>
+      {missing.length > 0 && (
+        <div className="space-y-2 rounded-xl bg-amber-500/10 p-3">
+          <div className="text-xs font-semibold text-amber-400">No tengo los valores de {missing.length === 1 ? 'este producto' : 'estos productos'}. Ponlos una vez (de la tabla del envase, por 100 g) y quedan guardados para siempre.</div>
+          {missing.map((i) => {
+            const it = items[i];
+            if (!it) return null;
+            const v: MV = mv[i] ?? { kcal: 0, protein: 0, carbs: 0, fat: 0, w: 0 };
+            const set = (p: Partial<MV>) => setMv((m) => ({ ...m, [i]: { ...v, ...p } }));
+            const grams = it.unidad === 'g' || it.unidad === 'ml';
+            return (
+              <div key={i} className="space-y-1.5 rounded-lg bg-slate-800 p-2">
+                <div className="text-sm font-semibold text-white">{it.nombre} <span className="font-normal text-slate-400">· {it.cantidad} {it.unidad}</span></div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([['kcal', 'kcal'], ['protein', 'Prot'], ['carbs', 'Carbs'], ['fat', 'Grasas']] as const).map(([k, l]) => (
+                    <div key={k}>
+                      <div className="text-[10px] uppercase text-slate-400">{l} /100 g</div>
+                      <NumInput value={v[k]} label={`${it.nombre}: ${l} por 100 g`} className="field !py-1.5 text-center text-xs" onChange={(n) => set({ [k]: n } as Partial<MV>)} />
+                    </div>
+                  ))}
+                </div>
+                {!grams && (UNITKEY[it.unidad] || it.unidad === 'raciones') && it.unidad !== 'cucharadas' && (
+                  <label className="flex items-center gap-2 text-[11px] text-slate-300">Peso de 1 {SING[it.unidad] ?? it.unidad} (g)
+                    <NumInput value={v.w} label={`Peso de 1 ${SING[it.unidad] ?? it.unidad}`} className="field !w-20 !py-1.5 text-center text-xs" onChange={(n) => set({ w: n })} />
+                  </label>
+                )}
+                {!grams && !UNITKEY[it.unidad] && it.unidad !== 'raciones' && <div className="text-[11px] text-amber-400">Cambia la unidad a gramos o a otra medida para poder sumarlo.</div>}
+                <button className="btn btn-green w-full !py-2 text-xs" onClick={() => saveMissing(i)}><Check size={14} /> Guardar y sumar</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <button className="btn btn-ghost w-full text-accent" onClick={() => setChef(true)}><MessageCircle size={16} /> Preguntar al Chef sobre este plato</button>
       {chef && <ChefChat items={items} onClose={() => setChef(false)} onAdd={(list) => { setItems((cur) => { const real = cur.filter((x) => x.nombre.trim()); return [...real, ...list.map((a) => ({ nombre: a.nombre, cantidad: a.cantidad, unidad: a.unidad }))]; }); setEst(null); }} onApply={(cs) => { const pos = items.map((x, i) => (x.nombre.trim() ? i : -1)).filter((i) => i >= 0); setItems(items.map((x, k) => { const c = cs.find((y) => pos[y.indice] === k); return c ? { ...x, cantidad: c.cantidad, unidad: c.unidad } : x; })); setEst(null); setChef(false); }} />}
       {err && <ErrorBox msg={err} />}
