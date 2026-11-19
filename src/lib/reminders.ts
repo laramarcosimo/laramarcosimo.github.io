@@ -1,3 +1,4 @@
+import { expiryOf } from './pantry';
 import { isConnected, lastBackupAt, lastBackupError, readCloud } from './cloud';
 import { lastManualBackupTs } from './backup';
 import { byDay, faceStreak, faceTimeOf, weeklyStreak } from './streaks';
@@ -132,7 +133,7 @@ export function dueReminders(s: AppState, now = Date.now()): Reminder[] {
       out.push({ id: 'cloud', title: lastUp > 0 ? `La copia en la nube lleva ${days} días sin subirse` : 'No se ha podido subir la primera copia', text: `${err ? `Último error: ${err.msg}. ` : ''}Abre Ajustes → Copia de seguridad y pulsa «Subir copia a la nube» para ver qué falla. Si borras la app antes, perderías lo posterior.` });
     }
   }
-  const expiring = s.pantry.filter((p) => p.expires && p.qty > 0 && daysUntil(p.expires, now) <= 2);
+  const expiring = s.pantry.filter((p) => { const e = expiryOf(p); return !!e && p.qty > 0 && daysUntil(e, now) <= 2; });
   if (expiring.length > 0 && !(z.expiry > now)) {
     out.push({ id: 'expiry', title: 'Caduca pronto', text: `${expiring.map((p) => p.name).slice(0, 4).join(', ')}${expiring.length > 4 ? '…' : ''}: úsalo primero o congélalo.` });
   }

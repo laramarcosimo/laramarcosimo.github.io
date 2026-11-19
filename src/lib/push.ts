@@ -1,3 +1,4 @@
+import { expiryOf } from './pantry';
 import { readCloud } from './cloud';
 import { dayBalance } from './metabolic';
 import { photoDueAt, postWorkoutInfo } from './reminders';
@@ -129,7 +130,7 @@ export async function syncPushJobs(s: AppState, now = Date.now()): Promise<void>
   else await pushCancel('photo');
 
   const at9 = nextAt(9, now);
-  const soon = s.pantry.filter((p) => p.expires && daysUntil(p.expires, at9) >= 0 && daysUntil(p.expires, at9) <= 2).map((p) => p.name);
+  const soon = s.pantry.filter((p) => { const e = expiryOf(p); return !!e && daysUntil(e, at9) >= 0 && daysUntil(e, at9) <= 2; }).map((p) => p.name);
   if (soon.length > 0) await pushSchedule('expiry', 'Caducan pronto', `${soon.slice(0, 4).join(', ')}${soon.length > 4 ? '…' : ''}: úsalos hoy o mañana.`, at9);
   else await pushCancel('expiry');
 }

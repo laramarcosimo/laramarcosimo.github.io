@@ -1,12 +1,12 @@
 import { Camera, Image as ImageIcon, Minus, MoreHorizontal, Plus, Refrigerator, Search, Snowflake, Trash2, Warehouse } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { ProductThumb } from './ProductThumb';
 import { Modal, NumInput } from './ui';
 import { ALL_CATEGORIES, categoryOf } from '../lib/categories';
 import { readPackUnits } from '../lib/gemini';
 import { compressToBase64 } from '../lib/image';
 import { findProductImage, forgetCachedImage, productKey } from '../lib/openfood';
-import { addToPantry, askUnits, configureUnits, goneProducts, PLACES, placeOf, setPackQty, spendUnits, suggestUnits, unitsSummary, type Place } from '../lib/pantry';
+import { addToPantry, askUnits, expiryOf, configureUnits, goneProducts, PLACES, placeOf, setPackQty, spendUnits, suggestUnits, unitsSummary, type Place } from '../lib/pantry';
 import { SUPERMARKETS } from '../lib/stores';
 import { useStore } from '../lib/store';
 import type { PantryItem } from '../lib/types';
@@ -120,8 +120,9 @@ function UnitsEditor({ item, onChange, onSpend }: { item: PantryItem; onChange: 
 }
 
 function ExpiryBadge({ p }: { p: PantryItem }) {
-  if (!p.expires) return null;
-  const d = daysUntil(p.expires);
+  const ex = expiryOf(p);
+  if (!ex) return null;
+  const d = daysUntil(ex);
   const tone = d < 0 ? 'bg-red-500/15 text-red-400' : d <= 3 ? 'bg-amber-500/15 text-amber-500' : 'bg-emerald-500/15 text-emerald-500';
   const txt = d < 0 ? 'Caducado' : d === 0 ? 'Caduca hoy' : d < 14 ? `Caduca en ${d} d` : d < 60 ? `Caduca en ${Math.round(d / 7)} sem` : `Caduca en ${Math.round(d / 30)} mes`;
   return <span className={cx('whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold', tone)}>{p.expiresApprox ? '~' : ''}{txt}</span>;
@@ -163,7 +164,7 @@ export function PantryInventory({ onBarcode, soon, setSoon }: { onBarcode: () =>
   const del = (p: PantryItem) => { setDetail(null); removeWithUndo(`«${p.name}» eliminado`, (s) => ({ ...s, pantry: s.pantry.filter((x) => x.id !== p.id) })); };
 
   const nq = norm(q);
-  const byPlace = state.pantry.filter((p) => (placeFilter === 'todo' || placeOf(p) === placeFilter) && (!soon || (p.expires && daysUntil(p.expires) <= 3)));
+  const byPlace = state.pantry.filter((p) => (placeFilter === 'todo' || placeOf(p) === placeFilter) && (!soon || (expiryOf(p) && daysUntil(expiryOf(p) as string) <= 3)));
   const catsHere = ALL_CATEGORIES.filter((c) => byPlace.some((p) => categoryOf(p).id === c.id));
   const activeCat = cat === 'todos' || catsHere.some((c) => c.id === cat) ? cat : 'todos';
   const visible = byPlace.filter((p) => (activeCat === 'todos' || categoryOf(p).id === activeCat) && (!nq || norm(p.name).includes(nq)));
@@ -249,10 +250,14 @@ export function PantryInventory({ onBarcode, soon, setSoon }: { onBarcode: () =>
             ))}
           </div>
         )}
-        {visible.map((p) => {
+        {[...visible].sort((a, b) => ALL_CATEGORIES.findIndex((c) => c.id === categoryOf(a).id) - ALL_CATEGORIES.findIndex((c) => c.id === categoryOf(b).id)).map((p, idx, arr) => {
           const Pl = PLACE_ICON[placeOf(p)];
+          const cat0 = categoryOf(p);
+          const head = idx === 0 || categoryOf(arr[idx - 1]).id !== cat0.id;
           return (
-            <SwipeRow key={p.id} onDelete={() => del(p)}>
+            <Fragment key={p.id}>
+            {head && activeCat === 'todos' && <div className="pt-1 text-xs font-bold uppercase tracking-wide text-slate-400">{cat0.label}</div>}
+            <SwipeRow onDelete={() => del(p)}>
               <div role="button" tabIndex={0} onClick={() => setDetail(p.id)} onKeyDown={(e) => e.key === 'Enter' && setDetail(p.id)} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-slate-800 bg-slate-900 p-3">
                 <div className="shrink-0 rounded-xl shadow-md shadow-black/20"><ProductThumb name={p.name} store={p.store} size={60} /></div>
                 <div className="min-w-[7rem] flex-1">
@@ -270,6 +275,7 @@ export function PantryInventory({ onBarcode, soon, setSoon }: { onBarcode: () =>
                 </div>
               </div>
             </SwipeRow>
+            </Fragment>
           );
         })}
       </div>
@@ -296,11 +302,11 @@ export function PantryInventory({ onBarcode, soon, setSoon }: { onBarcode: () =>
                   {ALL_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </select></div>
             </div>
-            <div><label className="label">Caducidad{item.expiresApprox ? ' (estimada)' : ''}</label>
+            {placeOf(item) !== 'congelador' && <div><label className="label">Caducidad{item.expiresApprox ? ' (estimada)' : ''}</label>
               <div className="flex gap-2">
                 <input type="date" className="field min-w-0 flex-1" value={item.expires ?? ''} onChange={(e) => patch(item.id, { expires: e.target.value || undefined, expiresApprox: false })} />
                 {item.expires && <button className="btn btn-ghost" onClick={() => patch(item.id, { expires: undefined, expiresApprox: false })}>Quitar</button>}
-              </div></div>
+              </div></div>}
             <UnitsEditor item={item} onChange={(next) => update((s) => ({ ...s, pantry: s.pantry.map((x) => (x.id === next.id ? next : x)) }))} onSpend={(n) => update((s) => ({ ...s, pantry: spendUnits(s.pantry, item.id, n) }))} />
             {item.unitGrams ? <p className="text-xs text-slate-400">{item.unitGrams * item.qty} g en total · ≈{Math.floor((item.unitGrams * item.qty) / (item.portionG || 100))} raciones</p> : null}
             <div className="flex gap-2">

@@ -14,7 +14,7 @@ import { storeList } from '../lib/stores';
 import { generateRecipes, scanPantry } from '../lib/gemini';
 import { compressToBase64 } from '../lib/image';
 import { dayBalance } from '../lib/metabolic';
-import { addToPantry, deductFromPantry, type PantryEntry } from '../lib/pantry';
+import { addToPantry, deductFromPantry, expiryOf, type PantryEntry } from '../lib/pantry';
 import { useStore } from '../lib/store';
 import type { Difficulty, Recipe } from '../lib/types';
 import { cx, daysUntil, uid } from '../lib/utils';
@@ -76,7 +76,7 @@ export default function Pantry() {
   const sig = recipeSig(state.pantry.map((p) => p.name), state.utensils, state.dislikes, b.remaining, b.proteinRemaining, b.trainingDay);
   const [recipes, setRecipes] = useState<Recipe[]>(() => loadRecipes(sig));
   const savedSig = useRef(sig);
-  const expiring = state.pantry.filter((p) => p.expires && daysUntil(p.expires) <= 3);
+  const expiring = state.pantry.filter((p) => expiryOf(p) && daysUntil(expiryOf(p) as string) <= 3);
   // La última tanda se guarda (también tras cocinar una) para no volver a pedirla al cambiar de pestaña.
   useEffect(() => {
     try {

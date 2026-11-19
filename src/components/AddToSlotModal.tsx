@@ -4,7 +4,8 @@ import { addToDraft, draftCount, getDraft, subscribeDraft } from '../lib/compose
 import { useStore } from '../lib/store';
 import { SLOTS, consumeTupper, logTemplate, saveMealTemplate } from '../lib/templates';
 import type { Slot } from '../lib/types';
-import { cx } from '../lib/utils';
+import { cx, looseMatch } from '../lib/utils';
+import { deductItems } from '../lib/pantry';
 import { BarcodeScanner } from './BarcodeScanner';
 import { movePlannedToDiary } from '../lib/plan';
 import { dayKey } from '../lib/utils';
@@ -73,7 +74,7 @@ export function AddToSlotModal({ slot, onClose, onPhoto }: { slot: Slot; onClose
         <PantryPicker onQuick={(f) => { update((s) => logTemplate(s, { name: f.portion, calorias: f.kcal, proteinas: f.protein, carbs: f.carbs, grasas: f.fat, ingredientes: [f.item.name] }, true, slot)); done(); }} onDone={(items, used) => { addToDraft(draftKey, items, used); setManual(false); setTab('mano'); }} />
       </div>
       <div className={tab === 'mano' && !manual ? '' : 'hidden'}>
-        <FoodComposer draftKey={draftKey} confirmLabel={`Añadir a ${label.toLowerCase()}`} onManual={() => setManual(true)} onConfirm={(r, save) => { const used = getDraft(draftKey).used; update((s) => { const n = logTemplate(s, { ...r, ingredientes: used }, used.length > 0, slot); return save ? saveMealTemplate(n, r, slot) : n; }); done(); }} />
+        <FoodComposer draftKey={draftKey} confirmLabel={`Añadir a ${label.toLowerCase()}`} onManual={() => setManual(true)} onConfirm={(r, save) => { const used = getDraft(draftKey).used; update((s) => { const n = logTemplate(s, { ...r, ingredientes: used }, used.length > 0, slot); const typed = (r.items ?? []).filter((x) => !used.some((u) => looseMatch(u, x.nombre))); const d = deductItems(n.pantry, typed); const n2 = { ...n, pantry: d.pantry }; return save ? saveMealTemplate(n2, r, slot) : n2; }); done(); }} />
       </div>
       {tab === 'mano' && manual && (
         <div className="space-y-2">

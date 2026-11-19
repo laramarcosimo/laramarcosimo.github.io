@@ -30,6 +30,8 @@ export interface ComposedMeal {
   grasas: number;
   /** Cada alimento con su cantidad (para poder editarlo luego). */
   detalle?: string[];
+  /** Lo que se escribió, con cantidad y unidad (para descontarlo de la despensa). */
+  items?: { nombre: string; cantidad: number; unidad: string }[];
 }
 
 /**
@@ -353,7 +355,7 @@ export function FoodComposer({ confirmLabel, onConfirm, onManual, initial, autoC
             </div>
           )}
           <label className="flex items-center gap-2 text-xs text-slate-300"><input type="checkbox" className="h-4 w-4" checked={save} onChange={(e) => setSave(e.target.checked)} /> Guardar como plato para usarlo otra vez</label>
-          <button className="btn btn-green w-full" onClick={() => { learn(); onConfirm({ name: est.items.map((x) => x.nombre).join(' + '), ...total, detalle: est.items.map((x) => `${x.cantidad} ${x.nombre}`.trim()) }, save); if (draftKey) { clearDraft(draftKey); setRestored(false); } }}><Check size={16} /> {est.necesitaFoto ? 'Añadir igualmente' : confirmLabel}</button>
+          <button className="btn btn-green w-full" onClick={() => { learn(); onConfirm({ name: est.items.map((x) => x.nombre).join(' + '), ...total, detalle: est.items.map((x) => `${x.cantidad} ${x.nombre}`.trim()), items: items.filter((x) => x.nombre.trim()).map((x) => ({ nombre: x.nombre.trim(), cantidad: x.cantidad, unidad: x.unidad })) }, save); if (draftKey) { clearDraft(draftKey); setRestored(false); } }}><Check size={16} /> {est.necesitaFoto ? 'Añadir igualmente' : confirmLabel}</button>
         </div>
       )}
       <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; if (camRef.current) camRef.current.value = ''; if (f) void calc(f); }} />

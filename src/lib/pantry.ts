@@ -231,3 +231,37 @@ export const goneProducts = (history: PantryMemo[] | undefined, pantry: PantryIt
   const here = new Set(pantry.map((p) => productKey(p.name)));
   return (history ?? []).filter((m) => norm(m.name).includes(q) && !here.has(productKey(m.name))).slice(-max).reverse();
 };
+/** Caducidad que cuenta: en el congelador no se controla. */
+export const expiryOf = (p: { name: string; place?: Place; expires?: string }): string | undefined => (placeOf(p) === 'congelador' ? undefined : p.expires);
+
+/**
+ * Descuenta lo que escribes en una comida («2 lonchas de queso», «2 rebanadas de pan»): resta esas unidades del producto de la despensa.
+ * Solo se descuenta lo que se puede contar por piezas; gramos, cucharadas o raciones no se pueden restar de un envase y se devuelven en `skipped`.
+ */
+export const deductItems = (pantry: PantryItem[], items: { nombre: string; cantidad: number; unidad: string }[]): { pantry: PantryItem[]; skipped: string[] } => {
+  let cur = pantry;
+  const skipped: string[] = [];
+  for (const it of items) {
+    let hit = cur.find((p) => looseMatch(p.name, it.nombre));
+    if (!hit) continue;
+    const piece = it.unidad === 'lonchas' || it.unidad === 'rebanadas' || it.unidad === 'unidades';
+    if (!piece || !(it.cantidad > 0)) {
+      skipped.push(hit.name);
+      continue;
+    }
+    if (!hit.unitsPerPack && !hit.unitsOff && it.unidad !== 'unidades') {
+      const g = suggestUnits(hit.name);
+      if (g && g.label === it.unidad) {
+        const conf = configureUnits(hit, g.label, g.per, g.inner);
+        cur = cur.map((x) => (x.id === conf.id ? conf : x));
+        hit = conf;
+      }
+    }
+    if (!hit.unitsPerPack && it.unidad !== 'unidades') {
+      skipped.push(hit.name);
+      continue;
+    }
+    cur = spendUnits(cur, hit.id, Math.round(it.cantidad));
+  }
+  return { pantry: cur, skipped };
+};
